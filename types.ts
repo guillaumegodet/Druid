@@ -15,10 +15,10 @@ export enum ViewState {
 
 /** Statuts administratifs d'un personnel de recherche */
 export enum ResearcherStatus {
-  VALIDATED = 'VALIDATED',      // Identité vérifiée et active
-  NON_VALIDATED = 'NON_VALIDATED', // Forme auteur issue de publications, à valider
-  LEFT = 'LEFT',                // Personnel ayant quitté l'établissement
-  ANTICIPATED = 'ANTICIPATED',  // Recrutement futur enregistré
+  INTERNE = 'INTERNE',   // Identité vérifiée et active
+  DEPART = 'DEPART',     // Personnel ayant quitté l'établissement
+  PARTI = 'PARTI',       // Recrutement futur enregistré
+  EXTERNE = 'EXTERNE',   // Absence d'ID ou non trouvé dans l'annuaire
 }
 
 /** Représente un lien historique ou actuel avec une structure */
@@ -41,6 +41,16 @@ export interface Employment {
   cnu?: string;            // Section du Conseil National des Universités
   startDate?: string;
   endDate?: string;
+}
+
+/** Informations spécifiques Nantes Université issues du Grist */
+export interface NURelated {
+  pole?: string;           // Pôle de rattachement
+  composante?: string;     // Composante de rattachement
+  location?: string;       // Site global
+  doctoralSchool?: string; // ED de rattachement
+  hdr?: boolean;           // Habilitation à Diriger des Recherches
+  hdrYear?: string;        // Année HDR
 }
 
 /** Objet principal représentant un chercheur ou personnel d'appui */
@@ -77,6 +87,7 @@ export interface Researcher {
     scopusId?: string;     // ID Elsevier
     researcherId?: string; // ID Web of Science
   };
+  nuFields?: NURelated;    // Champs spécifiques Nantes Université
   lastSync?: string;       // Date de dernière mise à jour via source externe
 }
 
@@ -89,10 +100,10 @@ export interface Group {
 
 /** Niveaux de structure conformes au Cadre National (RNSR) */
 export enum StructureLevel {
-  ETABLISSEMENT = 'ETABLISSEMENT', // Personnalité morale (ex: Université)
-  INTERMEDIAIRE = 'INTERMEDIAIRE', // Regroupement (UFR, Dépt, Pôle)
-  ENTITE = 'ENTITE',               // Unité de recherche (ex: UMR)
-  EQUIPE = 'EQUIPE',               // Équipe de recherche interne
+  ETABLISSEMENT = '4', // Personnalité morale (ex: Université)
+  INTERMEDIAIRE = '3', // Regroupement (UFR, Dépt, Pôle)
+  ENTITE = '2',               // Unité de recherche (ex: UMR)
+  EQUIPE = '1',               // Équipe de recherche interne
 }
 
 /** Statut du cycle de vie d'une structure */

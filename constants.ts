@@ -54,7 +54,7 @@ export const MOCK_RESEARCHERS: Researcher[] = [
     lastName: 'Martin',
     displayName: 'Martin, Alice',
     email: 'alice.martin@external.org',
-    status: ResearcherStatus.NON_VALIDATED,
+    status: ResearcherStatus.UNKNOWN,
     employment: {
       employer: 'CNRS',
       contractType: 'Contractuel',
@@ -117,7 +117,7 @@ export const MOCK_RESEARCHERS: Researcher[] = [
     lastName: 'Martin',
     displayName: 'A. Martin',
     email: '-',
-    status: ResearcherStatus.NON_VALIDATED,
+    status: ResearcherStatus.UNKNOWN,
     employment: {
       employer: 'Unknown',
       internalTypology: 'Doctorant',
@@ -374,11 +374,4 @@ export const MOCK_GROUPS: Group[] = [
   { name: 'Anciens Membres' }, // Pas d'email configuré
 ];
 
-export const SYNC_SOURCES: SyncOption[] = [
-  { id: 'LDAP', label: 'LDAP Université' },
-  { id: 'RESEDA', label: 'RESEDA (CNRS)' },
-  { id: 'ORCID', label: 'ORCID' },
-  { id: 'IDREF', label: 'IdRef (ABES)' },
-  { id: 'SCOPUS', label: 'Scopus' },
-  { id: 'AUREHAL', label: 'AuréHAL' },
-];
+export const SYNC_SOURCES: SyncOption[] = [];

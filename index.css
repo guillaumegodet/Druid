@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-slate-800 font-sans;
+    background-image: radial-gradient(circle at center, rgba(100, 100, 255, 0.02) 0%, transparent 100%);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  .dark body {
+    @apply bg-slate-950 text-slate-100;
+    background-image: radial-gradient(circle at center, rgba(120, 100, 255, 0.05) 0%, transparent 100%);
+  }
+}
+
+@layer components {
+  .pixel-border {
+    @apply border-2 border-black dark:border-white shadow-pixel-hover;
+  }
+
+  .image-pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  .shadow-pixel-sm {
+    box-shadow: 2px 2px 0px 0px rgba(0, 0, 0, 0.8);
+  }
+
+  .lofi-card {
+    @apply bg-white dark:bg-slate-900 pixel-border hover:shadow-pixel transition-all cursor-pointer;
+  }
+}
+
+/* Texture overlays removed for performance */

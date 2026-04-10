@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
@@ -6,38 +7,29 @@ import { ResearcherDetail } from './components/ResearcherDetail';
 import { StructureList } from './components/StructureList';
 import { StructureDetail } from './components/StructureDetail';
 import { GroupList } from './components/GroupList';
-import { ViewState, Researcher, Structure } from './types';
-import { MOCK_RESEARCHERS } from './constants';
+import { ViewState, Researcher, Structure, ResearcherStatus } from './types';
+import { GristService } from './lib/gristService';
+import { useDruidData } from './hooks/useDruidData';
+import { useUrlState } from './hooks/useUrlState';
+import { MainLayout } from './components/layout/MainLayout';
 
 /**
  * @component App
  * @description Point d'entrée principal de l'application Druid.
- * Gère le routage par état (ViewState), la persistance du mode sombre
- * et le partage des données chercheurs/structures.
  */
 function App() {
-  /** État de la vue actuelle (Routage interne) */
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.RESEARCHERS_LIST);
-  
-  /** État d'ouverture de la barre latérale sur mobile */
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
-  /** 
-   * Gestion du Mode Sombre.
-   * Initialise l'état via localStorage ou les préférences système.
-   */
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) {
-        return savedTheme === 'dark';
-      }
+      if (savedTheme) return savedTheme === 'dark';
       return window.matchMedia('(prefers-color-scheme: dark)').matches;
     }
     return false;
   });
 
-  /** Synchronisation de la classe 'dark' sur l'élément document racine */
   useEffect(() => {
     if (darkMode) {
       document.documentElement.classList.add('dark');
@@ -50,31 +42,130 @@ function App() {
 
   const toggleTheme = () => setDarkMode(!darkMode);
 
-  /** 
-   * État partagé des chercheurs pour permettre l'interaction entre 
-   * les différentes listes (ex: ajout de membres aux groupes).
-   */
-  const [researchers, setResearchers] = useState<Researcher[]>(MOCK_RESEARCHERS);
-  
+  // Utilisation du hook de données déporté
+  const { 
+    researchers, 
+    setResearchers, 
+    structures, 
+    loading, 
+    error, 
+    setError, 
+    setLoading, 
+    refreshData 
+  } = useDruidData();
+
   const [selectedResearcher, setSelectedResearcher] = useState<Researcher | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
 
-  /** Déclenche le passage vers la vue détaillée d'un chercheur */
+  // Synchronisation avec l'URL
+  const { setUrlState } = useUrlState(
+    { page: ViewState.RESEARCHERS_LIST, id: null },
+    (newState) => {
+      if (newState.page) setCurrentView(newState.page as ViewState);
+    }
+  );
+
+  // Effet pour sélectionner l'entité si un ID est présent dans l'URL (une fois les données chargées)
+  useEffect(() => {
+    if (loading) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const page = params.get('page');
+
+    if (id && page === ViewState.RESEARCHER_DETAIL && researchers.length > 0) {
+      const r = researchers.find(res => res.id === id);
+      if (r) setSelectedResearcher(r);
+    } else if (id && page === ViewState.STRUCTURE_DETAIL && structures.length > 0) {
+      const s = structures.find(st => st.id === id);
+      if (s) setSelectedStructure(s);
+    }
+  }, [loading, researchers, structures]);
+
   const handleResearcherSelect = (researcher: Researcher) => {
     setSelectedResearcher(researcher);
     setCurrentView(ViewState.RESEARCHER_DETAIL);
+    setUrlState({ page: ViewState.RESEARCHER_DETAIL, id: researcher.id });
   };
 
-  /** Déclenche le passage vers la vue détaillée d'une structure */
   const handleStructureSelect = (structure: Structure) => {
     setSelectedStructure(structure);
     setCurrentView(ViewState.STRUCTURE_DETAIL);
+    setUrlState({ page: ViewState.STRUCTURE_DETAIL, id: structure.id });
   };
 
-  /**
-   * Rendu conditionnel du contenu principal basé sur currentView.
-   * @returns {JSX.Element | null} Le composant correspondant à la vue active.
-   */
+  const setViewAndUrl = (view: ViewState) => {
+    setCurrentView(view);
+    setUrlState({ page: view, id: null });
+  };
+
+  const handleNewResearcher = () => {
+    const newResearcher: Researcher = {
+      id: `NEW-${Date.now()}`,
+      uid: '',
+      lastName: '',
+      firstName: '',
+      displayName: 'Nouveau personnel',
+      email: '',
+      nationality: '',
+      birthDate: '',
+      status: ResearcherStatus.EXTERNE,
+      employment: {
+        employer: '',
+        contractType: '',
+        grade: '',
+        internalTypology: '',
+        startDate: '',
+        endDate: '',
+      },
+      affiliations: [
+        {
+          structureName: '',
+          team: '',
+          startDate: '',
+          isPrimary: true
+        }
+      ],
+      groups: [],
+      identifiers: {},
+      nuFields: {},
+      lastSync: new Date().toISOString().split('T')[0],
+      civility: ''
+    };
+    setSelectedResearcher(newResearcher);
+    setCurrentView(ViewState.RESEARCHER_DETAIL);
+  };
+
+  const handleSaveResearcher = async (updatedResearcher: Researcher) => {
+    try {
+      setLoading(true);
+      if (updatedResearcher.id.startsWith('NEW-')) {
+        await GristService.createResearcher(updatedResearcher);
+      } else {
+        await GristService.updateResearcher(updatedResearcher);
+      }
+      await refreshData(); // Rafraîchir pour voir le nouveau record
+      setCurrentView(ViewState.RESEARCHERS_LIST);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'enregistrement');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveStructure = async (updatedStructure: Structure) => {
+    try {
+      setLoading(true);
+      await GristService.updateStructure(updatedStructure);
+      await refreshData(); // Refresh data
+      setCurrentView(ViewState.STRUCTURES_LIST);
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'enregistrement de la structure');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case ViewState.RESEARCHERS_LIST:
@@ -82,7 +173,10 @@ function App() {
           <ResearcherList 
             researchers={researchers}
             setResearchers={setResearchers}
-            onSelectResearcher={handleResearcherSelect} 
+            onSelectResearcher={handleResearcherSelect}
+            onNewResearcher={handleNewResearcher}
+            loading={loading}
+            onManualSync={() => refreshData()}
           />
         );
       case ViewState.RESEARCHER_DETAIL:
@@ -90,17 +184,27 @@ function App() {
         return (
           <ResearcherDetail 
             researcher={selectedResearcher} 
-            onBack={() => setCurrentView(ViewState.RESEARCHERS_LIST)} 
+            onBack={() => setViewAndUrl(ViewState.RESEARCHERS_LIST)} 
+            onSave={handleSaveResearcher}
+            isSaving={loading}
+            onNavigateToStructure={(id) => {
+              const st = structures.find(s => s.id === id);
+              if (st) {
+                handleStructureSelect(st);
+              }
+            }}
           />
         );
       case ViewState.STRUCTURES_LIST:
-        return <StructureList onSelectStructure={handleStructureSelect} />;
+        return <StructureList structures={structures} onSelectStructure={handleStructureSelect} />;
       case ViewState.STRUCTURE_DETAIL:
         if (!selectedStructure) return null;
         return (
           <StructureDetail 
             structure={selectedStructure} 
-            onBack={() => setCurrentView(ViewState.STRUCTURES_LIST)} 
+            onBack={() => setViewAndUrl(ViewState.STRUCTURES_LIST)} 
+            onSave={handleSaveStructure}
+            isSaving={loading}
           />
         );
       case ViewState.GROUPS_LIST:
@@ -116,39 +220,24 @@ function App() {
   };
 
   return (
-    <div className={`flex h-screen w-full bg-background dark:bg-slate-900 text-gray-800 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200`}>
-      
-      {/* Barre latérale de navigation */}
-      <Sidebar 
-        currentView={currentView} 
-        onChangeView={setCurrentView} 
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        isDarkMode={darkMode}
-        toggleTheme={toggleTheme}
-      />
-
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative w-full">
-        {/* En-tête Mobile uniquement */}
-        <div className="md:hidden bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4 flex items-center justify-between shrink-0 transition-colors">
-          <div className="flex items-center gap-3">
-             <button 
-               onClick={() => setIsSidebarOpen(true)} 
-               className="p-2 -ml-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-               aria-label="Ouvrir le menu"
-             >
-               <Menu className="w-6 h-6" />
-             </button>
-             <span className="font-bold text-gray-800 dark:text-white">Druid</span>
-          </div>
-        </div>
-
-        {/* Zone de contenu dynamique */}
-        <main className="flex-1 overflow-hidden relative" id="main-content">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <MainLayout
+      isSidebarOpen={isSidebarOpen}
+      setIsSidebarOpen={setIsSidebarOpen}
+      error={error}
+      onErrorDismiss={() => setError('')}
+      sidebar={
+        <Sidebar 
+          currentView={currentView} 
+          onChangeView={setViewAndUrl} 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isDarkMode={darkMode}
+          toggleTheme={toggleTheme}
+        />
+      }
+    >
+      {renderContent()}
+    </MainLayout>
   );
 }
 
