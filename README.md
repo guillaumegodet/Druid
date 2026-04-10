@@ -76,4 +76,4 @@ Le projet utilise un fichier `.env` pour sécuriser les accès :
 Ce projet est développé pour optimiser le pilotage de la recherche. Pour toute demande de nouveau graphique ou de nouvelle source de données, veuillez contacter l'administrateur du projet.
 
 ---
-*Réalisé avec ❤️ par le service Bibliométrie du SCD de Nantes Universitépour l'excellence de la recherche.*
+*Réalisé avec ❤️ par le service Bibliométrie du SCD de Nantes Université pour l'excellence de la recherche.*
