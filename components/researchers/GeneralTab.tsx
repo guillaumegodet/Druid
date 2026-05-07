@@ -74,7 +74,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               />
             </div>
             <div className="space-y-1">
-              <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">UID (Dyna)</label>
+              <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">UID</label>
               <input 
                 type="text" 
                 value={researcher.uid || ''} 
