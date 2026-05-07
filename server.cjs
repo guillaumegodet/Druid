@@ -28,7 +28,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false, httpOnly: true, maxAge: 8 * 60 * 60 * 1000 },
+  cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 8 * 60 * 60 * 1000 },
 }));
 
 app.use((req, res, next) => {
