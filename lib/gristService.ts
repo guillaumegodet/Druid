@@ -64,7 +64,7 @@ const researcherToGristFields = (r: Researcher) => ({
   gender: r.civility,
   contact_email: r.email,
   nationality: r.nationality || null,
-  bithdate: toGristDate(r.birthDate),   // column name typo preserved from Grist schema
+  birthdate: toGristDate(r.birthDate),   
   eppn: r.eppn || null,
   status: r.status,
   main_research_structure: r.affiliations[0]?.structureName || '',
@@ -151,7 +151,7 @@ export const GristService = {
         const civility = normCivility(ldapCivility || f['gender'] || '');
 
         // Birth date: LDAP takes priority
-        let birthDate = fromGristDate(f['bithdate']);   // column name typo
+        let birthDate = fromGristDate(f['birthdate']);   
         if (ldapEntry?.birthDate) {
           const lb = ldapEntry.birthDate;
           if (/^\d{8}$/.test(lb)) {

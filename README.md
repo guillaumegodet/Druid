@@ -53,7 +53,7 @@ Druid expects the following column names in your researchers table:
 | `last_name` | Family name |
 | `first_names` | Given name(s) |
 | `gender` | `M` or `F` |
-| `bithdate` | Birth date (YYYY-MM-DD) — note the column name typo |
+| `birthdate` | Birth date (YYYY-MM-DD) |
 | `contact_email` | Professional email |
 | `nationality` | Nationality |
 | `status` | `INTERNE`, `EXTERNE`, `DEPART`, or `PARTI` |
