@@ -47,7 +47,7 @@ export const ResearcherIcons: React.FC<{ identifiers: any }> = ({ identifiers })
           title={`IdRef: ${identifiers.idref}`}
           className={`${boxStyles} bg-white overflow-hidden p-0.5`}
         >
-          <img src="/idref.svg" alt="IdRef" className="w-full h-full object-contain" />
+          <img src={`${import.meta.env.BASE_URL}idref.svg`} alt="IdRef" className="w-full h-full object-contain" />
         </div>
       )}
 

@@ -185,7 +185,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="space-y-6">
             <div className="flex items-center gap-3 pb-3 border-b-2 border-black/10 dark:border-white/10">
                 <Building2 className="w-5 h-5 text-gray-400" />
-                <h3 className="text-2xl font-pixel text-gray-900 dark:text-white uppercase tracking-widest leading-none">NANTES UNIVERSITÉ</h3>
+                <h3 className="text-2xl font-pixel text-gray-900 dark:text-white uppercase tracking-widest leading-none">AUTRES INFORMATIONS</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="space-y-1">

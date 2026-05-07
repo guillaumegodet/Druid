@@ -114,13 +114,13 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   const [filterLabs, setFilterLabs] = useState<string[]>([]);
   const [filterGrades, setFilterGrades] = useState<string[]>([]);
   const [filterContractTypes, setFilterContractTypes] = useState<string[]>([]);
-  const [filterPoles, setFilterPoles] = useState<string[]>([]);
+  const [filterLocations, setFilterLocations] = useState<string[]>([]);
 
   // Synchronisation avec l'URL
   const splitFilter = (v: string) => v ? v.split(',').filter(Boolean) : [];
 
   const { setUrlState } = useUrlState(
-    { search: '', status: '', employer: '', lab: '', grade: '', contractType: '', pole: '', mode: 'list' },
+    { search: '', status: '', employer: '', lab: '', grade: '', contractType: '', location: '', mode: 'list' },
     (newState) => {
       if (newState.search !== undefined) setSearchTerm(newState.search || '');
       if (newState.status !== undefined) setFilterStatuses(splitFilter(newState.status || ''));
@@ -128,7 +128,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
       if (newState.lab !== undefined) setFilterLabs(splitFilter(newState.lab || ''));
       if (newState.grade !== undefined) setFilterGrades(splitFilter(newState.grade || ''));
       if (newState.contractType !== undefined) setFilterContractTypes(splitFilter(newState.contractType || ''));
-      if (newState.pole !== undefined) setFilterPoles(splitFilter(newState.pole || ''));
+      if (newState.location !== undefined) setFilterLocations(splitFilter(newState.location || ''));
       if (newState.mode !== undefined) setViewMode((newState.mode as 'list' | 'dashboard') || 'list');
     }
   );
@@ -139,7 +139,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   const updateLabs = (vals: string[]) => { setFilterLabs(vals); setUrlState({ lab: vals.join(',') }); };
   const updateGrades = (vals: string[]) => { setFilterGrades(vals); setUrlState({ grade: vals.join(',') }); };
   const updateContractTypes = (vals: string[]) => { setFilterContractTypes(vals); setUrlState({ contractType: vals.join(',') }); };
-  const updatePoles = (vals: string[]) => { setFilterPoles(vals); setUrlState({ pole: vals.join(',') }); };
+  const updateLocations = (vals: string[]) => { setFilterLocations(vals); setUrlState({ location: vals.join(',') }); };
   const updateViewMode = (val: 'list' | 'dashboard') => { setViewMode(val); setUrlState({ mode: val }); };
 
   // Configuration du tri
@@ -173,7 +173,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   const labs = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.affiliations.map(a => a.structureName)).filter(Boolean))), [enrichedResearchers]);
   const grades = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.grade).filter(Boolean))).sort() as string[], [enrichedResearchers]);
   const contractTypes = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.contractType).filter(Boolean))).sort() as string[], [enrichedResearchers]);
-  const poles = useMemo(() => [...new Set(enrichedResearchers.map(r => r.extra?.pole || '').filter(Boolean))].sort(), [enrichedResearchers]);
+  const locations = useMemo(() => [...new Set(enrichedResearchers.map(r => r.extra?.location || '').filter(Boolean))].sort(), [enrichedResearchers]);
   const allGroups = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.groups))).sort(), [enrichedResearchers]);
 
   /** 
@@ -194,7 +194,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
       const matchesLab = filterLabs.length === 0 || r.affiliations.some(a => filterLabs.includes(a.structureName));
       const matchesGrade = filterGrades.length === 0 || filterGrades.includes(r.employment.grade || '');
       const matchesContractType = filterContractTypes.length === 0 || filterContractTypes.includes(r.employment.contractType || '');
-      const matchesPole = filterPoles.length === 0 || filterPoles.includes(r.extra?.pole || '');
+      const matchesLocation = filterLocations.length === 0 || filterLocations.includes(r.extra?.location || '');
 
       const researcherArrival = r.employment.startDate;
       const researcherDeparture = r.employment.endDate;
@@ -209,14 +209,14 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
         (!idFilters.idref || !!r.identifiers.idref) &&
         (!idFilters.scopus || !!r.identifiers.scopusId);
 
-      return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesGrade && matchesContractType && matchesPole && matchesPeriod && matchesIds;
+      return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesGrade && matchesContractType && matchesLocation && matchesPeriod && matchesIds;
     });
-  }, [researchers, searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterPoles, filterDateStart, filterDateEnd, idFilters]);
+  }, [researchers, searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd, idFilters]);
 
   // Réinitialiser la pagination lors d'un changement de filtre
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterPoles, filterDateStart, filterDateEnd]);
+  }, [searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd]);
 
   /** LOGIQUE DE TRI appliqué après le filtrage */
   const sortedResearchers = useMemo(() => {
@@ -585,10 +585,10 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                     />
 
                     <MultiSelectFilter
-                      label="PÔLE S&T"
-                      options={poles.map(p => ({ value: p, label: p }))}
-                      selected={filterPoles}
-                      onChange={updatePoles}
+                      label="LOCALISATION"
+                      options={locations.map(l => ({ value: l, label: l }))}
+                      selected={filterLocations}
+                      onChange={updateLocations}
                     />
               
               <div className="flex flex-wrap gap-4 pt-4 border-t-2 border-black/10 dark:border-white/10 mt-2">
@@ -611,7 +611,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                    <label className="flex items-center gap-1.5 cursor-pointer group ml-2">
                       <input type="checkbox" checked={idFilters.idref} onChange={e => setIdFilters({...idFilters, idref: e.target.checked})} className="hidden" />
                       <div className={`w-6 h-6 border-2 border-black dark:border-white flex items-center justify-center transition-colors overflow-hidden bg-white `}>
-                         {idFilters.idref && <img src="/idref.svg" alt="IDRef" className="w-full h-full object-contain" />}
+                         {idFilters.idref && <img src={`${import.meta.env.BASE_URL}idref.svg`} alt="IDRef" className="w-full h-full object-contain" />}
                       </div>
                       <span className="text-[9px] font-bold uppercase text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">IdRef</span>
                    </label>
