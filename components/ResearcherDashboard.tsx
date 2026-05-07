@@ -133,7 +133,7 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
   }, [researchers]);
 
   const stats = useMemo(() => {
-    const hdrCount = researchers.filter(r => r.nuFields?.hdr).length;
+    const hdrCount = researchers.filter(r => r.extra?.hdr).length;
     return {
       total: researchers.length,
       hdrCount,

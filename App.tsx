@@ -128,7 +128,7 @@ function App() {
       ],
       groups: [],
       identifiers: {},
-      nuFields: {},
+      extra: {},
       lastSync: new Date().toISOString().split('T')[0],
       civility: ''
     };
@@ -136,32 +136,53 @@ function App() {
     setCurrentView(ViewState.RESEARCHER_DETAIL);
   };
 
-  const handleSyncToSovisu = async () => {
+  const handleSyncToSovisu = () => {
     try {
-      setLoading(true);
-      const res = await fetch('/api/sync-sovisuplus', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ researchers, structures }),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Erreur serveur');
+      const CSV_HEADERS = [
+        'first_names', 'last_name', 'main_research_structure', 'tracking_id', 'local',
+        'eppn', 'idhals', 'idhali', 'orcid', 'idref', 'scopus',
+        'institution_identifier', 'institution_id_nomenclature', 'position',
+        'employment_start_date', 'employment_end_date', 'hdr',
+      ];
+      const csvEscape = (v: any) => {
+        const s = (v ?? '').toString();
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"` : s;
+      };
+      const isoDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(v ?? '') ? v : '';
+
+      const structureByAcronym: Record<string, typeof structures[0]> = {};
+      for (const s of structures) {
+        if (s.acronym) structureByAcronym[s.acronym.toUpperCase().trim()] = s;
       }
-      const blob = await res.blob();
+
+      const rows = [CSV_HEADERS.join(',')];
+      for (const r of researchers) {
+        if (!r.uid) continue;
+        const labName = r.affiliations?.[0]?.structureName || '';
+        const struct = structureByAcronym[labName.toUpperCase().trim()];
+        const trackingId = struct?.trackingId || '';
+        const uai = r.employment?.institutionId || '';
+        rows.push([
+          r.firstName, r.lastName, trackingId, r.uid, r.uid,
+          r.eppn || '', r.identifiers?.halId || '', '',
+          r.identifiers?.orcid || '', r.identifiers?.idref || '',
+          r.identifiers?.scopusId || '', uai, uai ? 'UAI' : '',
+          r.employment?.grade || '',
+          isoDate(r.employment?.startDate), isoDate(r.employment?.endDate),
+          r.extra?.hdr ? 'OUI' : '',
+        ].map(csvEscape).join(','));
+      }
+
+      const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
-      a.download = 'people.csv';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      a.href = url; a.download = 'people.csv';
+      document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
       setError('');
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'export people.csv');
-    } finally {
-      setLoading(false);
     }
   };
 

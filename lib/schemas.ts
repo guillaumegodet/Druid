@@ -41,7 +41,7 @@ export const EmploymentSchema = z.object({
   ldapFields: z.array(z.string()).optional().default([]),
 });
 
-export const NURelatedSchema = z.object({
+export const ResearcherExtraSchema = z.object({
   pole: z.string().optional().nullable(),
   composante: z.string().optional().nullable(),
   location: z.string().optional().nullable(),
@@ -71,12 +71,12 @@ export const ResearcherSchema = z.object({
   email: z.string().email().or(z.literal('')).default(''),
   secondaryEmail: z.string().email().or(z.literal('')).optional().nullable(),
   phone: z.string().optional().nullable(),
-  status: z.nativeEnum(ResearcherStatus).default(ResearcherStatus.UNKNOWN),
+  status: z.nativeEnum(ResearcherStatus).default(ResearcherStatus.EXTERNE),
   employment: EmploymentSchema,
   affiliations: z.array(AffiliationSchema).default([]),
   groups: z.array(z.string()).default([]),
   identifiers: ResearcherIdentifiersSchema,
-  nuFields: NURelatedSchema.optional(),
+  extra: ResearcherExtraSchema.optional(),
   ldapFields: z.array(z.string()).optional().default([]),
   lastSync: z.string().optional().nullable(),
 });

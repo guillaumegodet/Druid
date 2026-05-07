@@ -5,7 +5,7 @@ const GRIST_DOC_ID = import.meta.env.VITE_GRIST_DOC_ID;
 const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY;
 const GRIST_RESEARCHERS_TABLE = import.meta.env.VITE_GRIST_RESEARCHERS_TABLE || 'Annuaire';
 const GRIST_STRUCTURES_TABLE = import.meta.env.VITE_GRIST_STRUCTURES_TABLE || 'Structures';
-const GRIST_BASE_URL = '/api/grist';
+const GRIST_BASE_URL = import.meta.env.VITE_GRIST_BASE_URL || '/api/grist';
 
 const RESEARCHERS_CACHE_KEY = 'druid_researchers_cache';
 const STRUCTURES_CACHE_KEY = 'druid_structures_cache';
@@ -80,8 +80,8 @@ const researcherToGristFields = (r: Researcher) => ({
   idref: r.identifiers.idref || null,
   idhals: r.identifiers.halId || null,
   scopus: r.identifiers.scopusId || null,
-  hdr: r.nuFields?.hdr ?? false,
-  localisation: r.nuFields?.location || null,
+  hdr: r.extra?.hdr ?? false,
+  localisation: r.extra?.location || null,
 });
 
 export const GristService = {
@@ -200,7 +200,7 @@ export const GristService = {
             halId: f['idhals'] || f['idhali'] || '',
             scopusId: f['scopus'] || '',
           },
-          nuFields: {
+          extra: {
             hdr: f['hdr'] === true || f['hdr'] === 'OUI',
             location: f['localisation'] || '',
           },

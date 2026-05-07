@@ -45,8 +45,8 @@ export interface Employment {
   ldapFields?: string[];   // Champs dont la valeur provient du LDAP (non modifiables dans l'app)
 }
 
-/** Informations spécifiques Nantes Université issues du Grist */
-export interface NURelated {
+/** Additional researcher metadata (HDR, location, cluster, etc.) */
+export interface ResearcherExtra {
   pole?: string;           // Pôle de rattachement
   composante?: string;     // Composante de rattachement
   location?: string;       // Site global
@@ -90,7 +90,7 @@ export interface Researcher {
     scopusId?: string;     // ID Elsevier
     researcherId?: string; // ID Web of Science
   };
-  nuFields?: NURelated;    // Champs spécifiques Nantes Université
+  extra?: ResearcherExtra;    // Champs spécifiques Nantes Université
   ldapFields?: string[];   // Champs racine dont la valeur provient du LDAP (non modifiables)
   lastSync?: string;       // Date de dernière mise à jour via source externe
 }

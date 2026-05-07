@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Search, FileDown, UploadCloud, ArrowRight, Filter, Merge, Trash2, ArrowUp, ArrowDown, Users, CheckCircle, Network } from 'lucide-react';
 import { Structure, StructureStatus, StructureLevel } from '../types';
-import { POLE_LAB_MAPPING } from '../lib/mappings';
+
 import { SyncDialog } from './SyncDialog';
 import { ExportService } from '../lib/exportService';
 import { useUrlState } from '../hooks/useUrlState';
@@ -63,7 +63,7 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
   const pageSize = 50;
 
   const supervisors = useMemo(() => Array.from(new Set(structures.flatMap(s => s.supervisors))).sort(), [structures]);
-  const poles = useMemo(() => Object.keys(POLE_LAB_MAPPING), []);
+  const poles = useMemo(() => [...new Set(structures.map(s => s.cluster || '').filter(Boolean))].sort(), [structures]);
 
   const filteredStructures = useMemo(() => {
     return structures.filter(s => {

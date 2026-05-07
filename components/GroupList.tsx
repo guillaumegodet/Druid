@@ -200,7 +200,7 @@ export const GroupList: React.FC<GroupListProps> = ({ researchers, setResearcher
                               value={group.sympaEmail} 
                               onChange={(e) => setGroupConfigs(p => new Map(p).set(group.name, e.target.value))} 
                               className="text-[10px] font-mono border-2 border-black dark:border-white p-1 bg-white dark:bg-slate-800 w-full max-w-xs focus:shadow-pixel transition-all" 
-                              placeholder="adresse@sympa.nantes.fr"
+                              placeholder="liste@sympa.example.fr"
                             />
                           </div>
                         </td>

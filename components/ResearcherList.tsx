@@ -86,7 +86,7 @@ interface ResearcherListProps {
   loading?: boolean;
   /** Callback pour forcer la synchronisation manuelle */
   onManualSync?: () => void;
-  /** Callback pour exporter vers people.csv (SoVisu+) */
+  /** Callback pour télécharger people.csv */
   onSyncToSovisu?: () => void;
 }
 
@@ -173,7 +173,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   const labs = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.affiliations.map(a => a.structureName)).filter(Boolean))), [enrichedResearchers]);
   const grades = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.grade).filter(Boolean))).sort() as string[], [enrichedResearchers]);
   const contractTypes = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.contractType).filter(Boolean))).sort() as string[], [enrichedResearchers]);
-  const poles = useMemo(() => [...new Set(enrichedResearchers.map(r => r.nuFields?.pole || '').filter(Boolean))].sort(), [enrichedResearchers]);
+  const poles = useMemo(() => [...new Set(enrichedResearchers.map(r => r.extra?.pole || '').filter(Boolean))].sort(), [enrichedResearchers]);
   const allGroups = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.groups))).sort(), [enrichedResearchers]);
 
   /** 
@@ -194,7 +194,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
       const matchesLab = filterLabs.length === 0 || r.affiliations.some(a => filterLabs.includes(a.structureName));
       const matchesGrade = filterGrades.length === 0 || filterGrades.includes(r.employment.grade || '');
       const matchesContractType = filterContractTypes.length === 0 || filterContractTypes.includes(r.employment.contractType || '');
-      const matchesPole = filterPoles.length === 0 || filterPoles.includes(r.nuFields?.pole || '');
+      const matchesPole = filterPoles.length === 0 || filterPoles.includes(r.extra?.pole || '');
 
       const researcherArrival = r.employment.startDate;
       const researcherDeparture = r.employment.endDate;
@@ -509,7 +509,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                       className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
                     >
                       <RefreshCw className="w-4 h-4" />
-                      Synchroniser avec SoVisu+
+                      Télécharger people.csv
                     </button>
                   </div>
                 )}

@@ -153,17 +153,17 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                    <div className="mt-2 flex items-center gap-3">
                       <input 
                         type="checkbox" 
-                        checked={!!researcher.nuFields?.hdr} 
-                        onChange={(e) => onUpdateField('hdr', e.target.checked, 'nuFields')}
+                        checked={!!researcher.extra?.hdr} 
+                        onChange={(e) => onUpdateField('hdr', e.target.checked, 'extra')}
                         className="w-5 h-5 border-2 border-black dark:border-white text-primary-dark rounded-none" 
                       />
                       <span className="text-[10px] font-bold uppercase dark:text-gray-300">HABILITÉ À DIRIGER DES RECHERCHES (HDR)</span>
                    </div>
                 </div>
-                {researcher.nuFields?.hdr && (
+                {researcher.extra?.hdr && (
                   <div className="w-1/3 space-y-1">
                      <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Année HDR</label>
-                     <input type="text" value={researcher.nuFields?.hdrYear || ''} onChange={(e) => onUpdateField('hdrYear', e.target.value, 'nuFields')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono" />
+                     <input type="text" value={researcher.extra?.hdrYear || ''} onChange={(e) => onUpdateField('hdrYear', e.target.value, 'extra')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono" />
                   </div>
                 )}
               </div>
@@ -180,7 +180,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
          />
        </div>
 
-       {/* Section Nantes Université */}
+       {/* Section Informations complémentaires */}
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 pt-8">
           <div className="space-y-6">
             <div className="flex items-center gap-3 pb-3 border-b-2 border-black/10 dark:border-white/10">
@@ -190,19 +190,19 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="space-y-1">
                   <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Pôle</label>
-                  <input type="text" value={researcher.nuFields?.pole || ''} onChange={(e) => onUpdateField('pole', e.target.value, 'nuFields')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
+                  <input type="text" value={researcher.extra?.pole || ''} onChange={(e) => onUpdateField('pole', e.target.value, 'extra')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
                </div>
                <div className="space-y-1">
                   <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Composante</label>
-                  <input type="text" value={researcher.nuFields?.composante || ''} onChange={(e) => onUpdateField('composante', e.target.value, 'nuFields')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
+                  <input type="text" value={researcher.extra?.composante || ''} onChange={(e) => onUpdateField('composante', e.target.value, 'extra')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
                </div>
                <div className="space-y-1">
                   <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">ED de rattachement</label>
-                  <input type="text" value={researcher.nuFields?.doctoralSchool || ''} onChange={(e) => onUpdateField('doctoralSchool', e.target.value, 'nuFields')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
+                  <input type="text" value={researcher.extra?.doctoralSchool || ''} onChange={(e) => onUpdateField('doctoralSchool', e.target.value, 'extra')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
                </div>
                <div className="space-y-1">
                   <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Localisation (Site)</label>
-                  <input type="text" value={researcher.nuFields?.location || ''} onChange={(e) => onUpdateField('location', e.target.value, 'nuFields')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
+                  <input type="text" value={researcher.extra?.location || ''} onChange={(e) => onUpdateField('location', e.target.value, 'extra')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase" />
                </div>
             </div>
           </div>
