@@ -1,33 +1,59 @@
 # Druid — Directory for Researchers, Units & Identifiers
 
-Druid is a web application for managing and browsing your institution's research directory. It reads researchers and structures from a [Grist](https://grist.numerique.gouv.fr/o/docs/bWVMq9SHJes7/Demo-Druid) document and lets you explore, filter, edit and export them. 
+**Druid** is a web application for managing and browsing an institution's research directory: researchers, labs, and structures — all driven by a [Grist](https://grist.numerique.gouv.fr) spreadsheet.
 
-## Features
+---
 
-- Browse researchers and research structures from Grist
-- Filter by status, employer, lab, grade, contract type, identifier presence
-- Edit researcher records and write changes back to Grist
-- Export the directory as CSV (`people.csv`) for CRISalid / SoVisu+
+## Try the demo
+
+| | |
+|---|---|
+| **Live app** | [guillaumegodet.github.io/Druid](https://guillaumegodet.github.io/Druid) |
+| **Demo Grist document** | [Demo-Druid on grist.numerique.gouv.fr](https://grist.numerique.gouv.fr/o/docs/bWVMq9SHJes7/Demo-Druid) |
+
+The live app connects directly to the public Grist document (read-only, no account needed). Open it, browse researchers and structures, use the filters, and click **Synchroniser → Synchroniser avec SoVisu+** to download a sample `people.csv` export.
+
+To edit data, open the Grist document and modify the `Demo_data_researchers` or `Demo_data_structures` tables — the app will pick up the changes on the next sync.
+
+---
+
+## What it does
+
+- Browse and filter researchers and research structures loaded from Grist
+- Filter by status, employer, lab, grade, contract type, location, identifier presence
+- Edit researcher and structure records and write changes back to Grist
+- Export the directory as `people.csv` for [CRISalid](https://crisalid.org) / SoVisu+
 - Optional LDAP enrichment (status, civility, birth date, EPPN)
 - Optional Keycloak authentication
 
-## Quick start
+---
 
-### 1. Copy the example env file
+## Deploy your own instance
+
+### 1. Prepare your Grist document
+
+Import the provided CSV files into a new Grist document:
+
+- `demo-data-researchers.csv` → table for researchers
+- `demo-data-structures.csv` → table for structures
+
+Note the document ID from the URL (e.g. `bWVMq9SHJes7ngCuHsN9iD`) and the table names.
+
+### 2. Configure environment variables
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and set at minimum:
+Edit `.env`:
 
 ```
 VITE_GRIST_DOC_ID=<your-grist-doc-id>
-VITE_GRIST_RESEARCHERS_TABLE=Annuaire   # table name in your Grist doc
-VITE_GRIST_STRUCTURES_TABLE=Structures  # table name in your Grist doc
+VITE_GRIST_RESEARCHERS_TABLE=<researchers-table-name>
+VITE_GRIST_STRUCTURES_TABLE=<structures-table-name>
 ```
 
-### 2. Run with Docker Compose
+### 3. Run with Docker Compose
 
 ```bash
 docker compose up --build
@@ -35,7 +61,7 @@ docker compose up --build
 
 Open http://localhost:3000.
 
-### 3. Run without Docker
+### 4. Run without Docker
 
 ```bash
 npm install
@@ -43,13 +69,19 @@ npm run build
 node server.cjs
 ```
 
+### 5. Deploy as a static site (GitHub Pages)
+
+Set `VITE_BASE=/your-repo-name/` in your GitHub Actions workflow and enable GitHub Pages (Actions deployment). No server required — the app connects to Grist directly from the browser.
+
+---
+
 ## Grist document schema
 
-Druid expects the following column names in your researchers table:
+### Researchers table
 
 | Column | Description |
 |---|---|
-| `tracking_id` | Internal UID / identifier |
+| `tracking_id` | Internal UID |
 | `last_name` | Family name |
 | `first_names` | Given name(s) |
 | `gender` | `M` or `F` |
@@ -75,13 +107,11 @@ Druid expects the following column names in your researchers table:
 | `hdr` | `true` / `false` — Habilitation à Diriger des Recherches |
 | `localisation` | Campus / site |
 
-A public demo document is available at: `bWVMq9SHJes7ngCuHsN9iD`
-
-Set `VITE_GRIST_DOC_ID=bWVMq9SHJes7ngCuHsN9iD` and `VITE_GRIST_RESEARCHERS_TABLE=Annuaire_chercheursNU_Annuaire_1_` to try the demo (read-only, no API key needed).
+---
 
 ## Authentication
 
-By default authentication is disabled (`DRUID_AUTH_ENABLED=false`). To enable Keycloak:
+Disabled by default (`DRUID_AUTH_ENABLED=false`). To enable Keycloak:
 
 ```
 DRUID_AUTH_ENABLED=true
@@ -94,7 +124,7 @@ APP_URL=https://your-druid-public-url
 
 ## LDAP enrichment (optional)
 
-When configured, the "Sync LDAP" button enriches researcher records with live LDAP data (status, civility, birth date, EPPN) and caches the result in `ldap_status_cache.json`.
+When configured, the **Synchroniser LDAP** button enriches researcher records with live LDAP data (status, civility, birth date, EPPN) and caches the result in `ldap_status_cache.json`.
 
 ```
 LDAP_URL=ldaps://your-ldap-server
@@ -106,7 +136,9 @@ LDAP_FILTER=(&(objectClass=supannPerson)(population=PERSONNEL))
 
 ## CSV export for SoVisu+ / CRISalid
 
-The "Synchroniser avec SoVisu+" button builds a `people.csv` file and triggers a browser download. This file can be loaded into the CRISalid data pipeline.
+**Synchroniser → Synchroniser avec SoVisu+** builds a `people.csv` file and triggers a browser download. This file feeds the CRISalid data pipeline.
+
+---
 
 ## License
 
