@@ -479,43 +479,43 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                </button>
             </div>
           </div>
-          {hasRole('admin') && (
-            <>
+          <>
+            {hasRole('admin') && (
               <button onClick={onNewResearcher} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-teal border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
                 <Plus className="w-4 h-4" /> Nouveau
               </button>
-              <div className="relative">
-                <button onClick={() => setShowSyncMenu(!showSyncMenu)} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Synchroniser
-                </button>
-                {showSyncMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 overflow-hidden">
-                    <button 
-                      onClick={() => { setShowSyncMenu(false); onManualSync?.(); }} 
-                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
-                    >
-                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                      Forcer mise à jour Grist
-                    </button>
-                    <button
-                      onClick={() => { setShowSyncMenu(false); onManualSync?.(); }}
-                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-emerald-600 dark:text-pixel-teal hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
-                    >
-                      <Users className="w-4 h-4" />
-                      Synchroniser LDAP
-                    </button>
-                    <button
-                      onClick={() => { setShowSyncMenu(false); onSyncToSovisu?.(); }}
-                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                      Télécharger people.csv
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+            )}
+            <div className="relative">
+              <button onClick={() => setShowSyncMenu(!showSyncMenu)} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Synchroniser
+              </button>
+              {showSyncMenu && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 overflow-hidden">
+                  <button
+                    onClick={() => { setShowSyncMenu(false); onManualSync?.(); }}
+                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                    Forcer mise à jour Grist
+                  </button>
+                  <button
+                    disabled
+                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-gray-300 dark:text-gray-600 border-b-2 border-black dark:border-white flex items-center gap-2 cursor-not-allowed"
+                  >
+                    <Users className="w-4 h-4" />
+                    Synchroniser LDAP
+                  </button>
+                  <button
+                    onClick={() => { setShowSyncMenu(false); onSyncToSovisu?.(); }}
+                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Synchroniser avec SoVisu+
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
         </div>
       </header>
 
