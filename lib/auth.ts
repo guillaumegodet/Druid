@@ -10,20 +10,22 @@ let _userInfo: UserInfo | null = null;
 export const initKeycloak = (onAuthenticated: () => void): void => {
   fetch('/api/me')
     .then((res) => {
-      if (!res.ok) {
+      // 401 = server present but not authenticated → redirect to login
+      if (res.status === 401) {
         window.location.href = '/auth/login';
         return null;
       }
+      // 404 = no server (static / GitHub Pages build) → proceed without auth
+      if (!res.ok) return null;
       return res.json() as Promise<UserInfo>;
     })
     .then((data) => {
-      if (data) {
-        _userInfo = data;
-        onAuthenticated();
-      }
+      if (data) _userInfo = data;
+      onAuthenticated();
     })
     .catch(() => {
-      window.location.href = '/auth/login';
+      // Network error or no server → proceed without auth
+      onAuthenticated();
     });
 };
 
