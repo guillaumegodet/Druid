@@ -1,6 +1,6 @@
-# Druid — Directory of Researchers for University Institutions
+# Druid — Directory for Researchers, Units & Identifiers
 
-Druid is a web application for managing and browsing your institution's research directory. It reads researchers and structures from a [Grist](https://grist.numerique.gouv.fr) document and lets you explore, filter, edit and export them.
+Druid is a web application for managing and browsing your institution's research directory. It reads researchers and structures from a [Grist]([https://grist.numerique.gouv.fr]) document and lets you explore, filter, edit and export them.
 
 ## Features
 
