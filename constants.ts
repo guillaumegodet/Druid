@@ -54,7 +54,7 @@ export const MOCK_RESEARCHERS: Researcher[] = [
     lastName: 'Martin',
     displayName: 'Martin, Alice',
     email: 'alice.martin@external.org',
-    status: ResearcherStatus.UNKNOWN,
+    status: ResearcherStatus.EXTERNE,
     employment: {
       employer: 'CNRS',
       contractType: 'Contractuel',
@@ -117,7 +117,7 @@ export const MOCK_RESEARCHERS: Researcher[] = [
     lastName: 'Martin',
     displayName: 'A. Martin',
     email: '-',
-    status: ResearcherStatus.UNKNOWN,
+    status: ResearcherStatus.EXTERNE,
     employment: {
       employer: 'Unknown',
       internalTypology: 'Doctorant',
@@ -191,7 +191,7 @@ export const MOCK_STRUCTURES: Structure[] = [
     primaryMission: StructureMission.RECHERCHE,
     scientificDomains: ['Pluridisciplinaire'],
     ercFields: [],
-    address: '1 Place de l'Université',
+    address: '1 Place de la Republique',
     zipCode: '75000',
     city: 'Paris',
     country: 'France',
