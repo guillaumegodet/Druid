@@ -13,7 +13,7 @@ const DOC_UPDATED_AT_KEY = 'druid_grist_updated_at';
 
 // --- Date helpers ---
 
-const fromGristDate = (rawDate: any): string => {
+export const fromGristDate = (rawDate: any): string => {
   if (!rawDate) return '';
   if (typeof rawDate === 'number') {
     try {
@@ -34,7 +34,7 @@ const fromGristDate = (rawDate: any): string => {
   return String(rawDate);
 };
 
-const toGristDate = (date: any): string | null => {
+export const toGristDate = (date: any): string | null => {
   if (!date || typeof date !== 'string' || !date.includes('-')) return null;
   const parts = date.split('-');
   if (parts.length === 3 && parts[0].length === 4) {
@@ -43,8 +43,8 @@ const toGristDate = (date: any): string | null => {
   return date;
 };
 
-// Map Grist status field or LDAP state to ResearcherStatus
-const mapStatus = (gristStatus: string, ldapState?: string): ResearcherStatus => {
+/** Maps a Grist status string or an LDAP dynaEtat code to a ResearcherStatus. */
+export const mapStatus = (gristStatus: string, ldapState?: string): ResearcherStatus => {
   if (ldapState) {
     if (ldapState === 'N') return ResearcherStatus.INTERNE;
     if (ldapState === 'D') return ResearcherStatus.DEPART;
@@ -57,8 +57,17 @@ const mapStatus = (gristStatus: string, ldapState?: string): ResearcherStatus =>
   return ResearcherStatus.EXTERNE;
 };
 
-// Build Grist fields object for create/update (column names from standardized schema)
-const researcherToGristFields = (r: Researcher) => ({
+/** Normalises a raw civility string (LDAP or Grist) to 'M', 'F', or the first character. */
+export const normCivility = (val: string): string => {
+  if (!val) return '';
+  const v = val.toUpperCase().trim();
+  if (v === 'F' || v.startsWith('F') || v.startsWith('MME') || v.startsWith('MADAME')) return 'F';
+  if (v === 'M' || v.startsWith('M.') || v.startsWith('MR') || v.startsWith('MONSIEUR')) return 'M';
+  return v.charAt(0);
+};
+
+/** Builds the Grist fields object for create/update (column names match the standardized Grist schema). */
+export const researcherToGristFields = (r: Researcher) => ({
   last_name: r.lastName,
   first_names: r.firstName,
   gender: r.civility,
@@ -140,13 +149,6 @@ export const GristService = {
         const status = mapStatus(f['status'] || '', ldapState);
 
         // Civility: LDAP takes priority, then Grist gender field
-        const normCivility = (val: string) => {
-          if (!val) return '';
-          const v = val.toUpperCase().trim();
-          if (v === 'F' || v.startsWith('F') || v.startsWith('MME') || v.startsWith('MADAME')) return 'F';
-          if (v === 'M' || v.startsWith('M.') || v.startsWith('MR') || v.startsWith('MONSIEUR')) return 'M';
-          return v.charAt(0);
-        };
         const ldapCivility = ldapEntry?.civilite || '';
         const civility = normCivility(ldapCivility || f['gender'] || '');
 
