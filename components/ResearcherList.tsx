@@ -429,16 +429,6 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
         </div>
 
         <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-                  <div className="flex items-center gap-2 border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 transition-all focus-within:shadow-pixel group w-full">
-                    <Search className="w-4 h-4 text-gray-400 group-focus-within:text-primary-dark transition-colors" />
-                    <input 
-                      type="text" 
-                      placeholder="RECHERCHER PERSONNEL..." 
-                      className="bg-transparent border-none focus:ring-0 text-[11px] font-bold uppercase w-full dark:text-white"
-                      value={searchTerm}
-                      onChange={(e) => updateSearch(e.target.value)}
-                    />
-                  </div>
                   <div className="hidden sm:flex border-2 border-black dark:border-white p-1 bg-white dark:bg-slate-800 shadow-pixel-sm">
                     <button 
                       onClick={() => updateViewMode('list')}
