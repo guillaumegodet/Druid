@@ -43,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onChangeView, isO
         <div className="p-6 flex items-center justify-between border-b-2 border-black bg-pixel-blue">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 border-2 border-white flex items-center justify-center bg-white overflow-hidden shadow-[2px_2px_0px_0px_rgba(255,255,255,0.4)]">
-              <img src="/druid_icon.png" alt="Druid Logo" className="w-full h-full object-contain image-pixelated" />
+              <img src={`${import.meta.env.BASE_URL}druid_icon.png`} alt="Druid Logo" className="w-full h-full object-contain image-pixelated" />
             </div>
             <div className="overflow-hidden">
               <h1 className="font-pixel text-white text-2xl leading-none tracking-tight">DRUID</h1>

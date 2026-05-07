@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly BASE_URL: string
   readonly VITE_GRIST_API_KEY: string
   readonly VITE_GRIST_DOC_ID: string
   readonly VITE_GRIST_RESEARCHERS_TABLE: string
