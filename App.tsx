@@ -136,6 +136,35 @@ function App() {
     setCurrentView(ViewState.RESEARCHER_DETAIL);
   };
 
+  const handleSyncToSovisu = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/sync-sovisuplus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ researchers, structures }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Erreur serveur');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'people.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de l\'export people.csv');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSaveResearcher = async (updatedResearcher: Researcher) => {
     try {
       setLoading(true);
@@ -177,6 +206,7 @@ function App() {
             onNewResearcher={handleNewResearcher}
             loading={loading}
             onManualSync={() => refreshData()}
+            onSyncToSovisu={handleSyncToSovisu}
           />
         );
       case ViewState.RESEARCHER_DETAIL:

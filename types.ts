@@ -35,12 +35,14 @@ export interface Affiliation {
 /** Informations liées au contrat de travail et au grade */
 export interface Employment {
   employer: string;        // Établissement payeur (ex: Université, CNRS)
+  institutionId?: string;  // Code UAI de l'établissement payeur
   contractType?: string;   // Titulaire, Contractuel, etc.
   grade?: string;          // Corps / Grade (ex: PU, MCF, DR, CR)
   internalTypology?: string; // Catégorie interne (Chercheur, Enseignant-chercheur, Doctorant)
   cnu?: string;            // Section du Conseil National des Universités
   startDate?: string;
   endDate?: string;
+  ldapFields?: string[];   // Champs dont la valeur provient du LDAP (non modifiables dans l'app)
 }
 
 /** Informations spécifiques Nantes Université issues du Grist */
@@ -70,6 +72,7 @@ export interface Researcher {
 
   // Coordonnées
   email: string;
+  eppn?: string;           // eduPersonPrincipalName LDAP (pour export SoVisu+)
   secondaryEmail?: string;
   phone?: string;
   
@@ -88,6 +91,7 @@ export interface Researcher {
     researcherId?: string; // ID Web of Science
   };
   nuFields?: NURelated;    // Champs spécifiques Nantes Université
+  ldapFields?: string[];   // Champs racine dont la valeur provient du LDAP (non modifiables)
   lastSync?: string;       // Date de dernière mise à jour via source externe
 }
 

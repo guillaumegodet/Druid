@@ -1,7 +1,19 @@
 import React from 'react';
-import { User, Briefcase, Building2, Hash } from 'lucide-react';
+import { User, Briefcase, Building2, Hash, Lock, ExternalLink } from 'lucide-react';
 import { Researcher, Affiliation } from '../../types';
 import { AffiliationsTable } from './AffiliationsTable';
+import { GradeSelect } from './GradeSelect';
+
+const LdapFieldLabel: React.FC<{ label: string; fromLdap?: boolean }> = ({ label, fromLdap }) => (
+  <div className="flex items-center gap-2">
+    <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">{label}</label>
+    {fromLdap && (
+      <span className="flex items-center gap-1 px-1 py-0.5 text-[7px] font-bold uppercase font-mono bg-pixel-blue text-white border border-black">
+        <Lock className="w-2 h-2" />LDAP
+      </span>
+    )}
+  </div>
+);
 
 interface GeneralTabProps {
   researcher: Researcher;
@@ -52,8 +64,14 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               <input type="text" value={researcher.nationality || ''} onChange={(e) => onUpdateField('nationality', e.target.value)} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase focus:shadow-pixel transition-all" />
             </div>
             <div className="space-y-1">
-              <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Date de naissance</label>
-              <input type="date" value={researcher.birthDate || ''} onChange={(e) => onUpdateField('birthDate', e.target.value)} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono focus:shadow-pixel transition-all" />
+              <LdapFieldLabel label="Date de naissance" fromLdap={researcher.ldapFields?.includes('birthDate')} />
+              <input
+                type="date"
+                value={researcher.birthDate || ''}
+                onChange={(e) => onUpdateField('birthDate', e.target.value)}
+                disabled={researcher.ldapFields?.includes('birthDate')}
+                className={`w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono focus:shadow-pixel transition-all${researcher.ldapFields?.includes('birthDate') ? ' opacity-60 cursor-not-allowed' : ''}`}
+              />
             </div>
             <div className="space-y-1">
               <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">UID (Dyna)</label>
@@ -81,17 +99,43 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                 <input type="text" value={researcher.employment.employer} onChange={(e) => onUpdateField('employer', e.target.value, 'employment')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase transition-all focus:shadow-pixel" />
               </div>
               <div className="space-y-1">
-                <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Grade / Corps</label>
-                <input type="text" value={researcher.employment.grade || ''} onChange={(e) => onUpdateField('grade', e.target.value, 'employment')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase transition-all focus:shadow-pixel" />
+                <LdapFieldLabel label="Grade / Corps" fromLdap={researcher.employment.ldapFields?.includes('grade')} />
+                <GradeSelect
+                  value={researcher.employment.grade || ''}
+                  onChange={(code) => onUpdateField('grade', code, 'employment')}
+                  disabled={researcher.employment.ldapFields?.includes('grade')}
+                  className={`w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-bold uppercase transition-all focus:shadow-pixel${researcher.employment.ldapFields?.includes('grade') ? ' opacity-60 cursor-not-allowed' : ''}`}
+                />
               </div>
               <div className="space-y-1">
-                <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Typologie interne</label>
-                <select value={researcher.employment.internalTypology || ''} onChange={(e) => onUpdateField('internalTypology', e.target.value, 'employment')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue">
-                  <option value="">- Non définie -</option>
-                  <option value="Enseignant-chercheur">Enseignant-chercheur</option>
-                  <option value="Chercheur">Chercheur</option>
-                  <option value="Doctorant">Doctorant</option>
-                  <option value="Post-doctorant">Post-doctorant</option>
+                <LdapFieldLabel label="Type d'emploi" fromLdap={researcher.employment.ldapFields?.includes('contractType')} />
+                <select
+                  value={researcher.employment.contractType || ''}
+                  onChange={(e) => onUpdateField('contractType', e.target.value, 'employment')}
+                  disabled={researcher.employment.ldapFields?.includes('contractType')}
+                  className={`w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue${researcher.employment.ldapFields?.includes('contractType') ? ' opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <option value="">— Non défini —</option>
+                  <option value="TITULAIRE">TITULAIRE</option>
+                  <option value="CDI UNIVERSITE">CDI UNIVERSITE</option>
+                  <option value="CDD UNIVERSITE">CDD UNIVERSITE</option>
+                  <option value="APPRENTI">APPRENTI</option>
+                  <option value="CHERCHEUR INVITE">CHERCHEUR INVITE</option>
+                  <option value="CNRS-INSERM">CNRS-INSERM</option>
+                  <option value="DECEDE">DECEDE</option>
+                  <option value="DOCTORANT">DOCTORANT</option>
+                  <option value="ELU.E ETUDIANT.E">ELU.E ETUDIANT.E</option>
+                  <option value="ENSEIGNANT HEBERGE">ENSEIGNANT HEBERGE</option>
+                  <option value="MAITRE DE CONFERENCES HONORAIRE">MAITRE DE CONFERENCES HONORAIRE</option>
+                  <option value="MEMBRE ASSOCIATION">MEMBRE ASSOCIATION</option>
+                  <option value="PERSONNALITE EXTERIEURE">PERSONNALITE EXTERIEURE</option>
+                  <option value="PERSONNEL STRUCTURE PARTENAIRE">PERSONNEL STRUCTURE PARTENAIRE</option>
+                  <option value="PRESTATAIRE">PRESTATAIRE</option>
+                  <option value="PRESTATAIRE INTEGRE">PRESTATAIRE INTEGRE</option>
+                  <option value="PROFESSEUR EMERITE">PROFESSEUR EMERITE</option>
+                  <option value="RETRAITE">RETRAITE</option>
+                  <option value="STAGIAIRE">STAGIAIRE</option>
+                  <option value="VACATAIRE">VACATAIRE</option>
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -166,23 +210,51 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
           <div className="space-y-6">
             <div className="flex items-center gap-3 pb-3 border-b-2 border-black/10 dark:border-white/10">
                 <Hash className="w-5 h-5 text-gray-400" />
-                <h3 className="text-2xl font-pixel text-gray-900 dark:text-white uppercase tracking-widest leading-none">IDENTIFIANTS PIVOT</h3>
+                <h3 className="text-2xl font-pixel text-gray-900 dark:text-white uppercase tracking-widest leading-none">IDENTIFIANTS CHERCHEURS</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                <div className="space-y-1">
-                  <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">ORCID</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">ORCID</label>
+                    {researcher.identifiers.orcid && (
+                      <a href={`https://orcid.org/${researcher.identifiers.orcid}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[8px] font-bold text-[#A6CE39] hover:underline">
+                        <ExternalLink className="w-3 h-3" /> orcid.org
+                      </a>
+                    )}
+                  </div>
                   <input type="text" value={researcher.identifiers.orcid || ''} onChange={(e) => onUpdateField('orcid', e.target.value, 'identifiers')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono tracking-tighter" />
                </div>
                <div className="space-y-1">
-                  <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">IdRef</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">IdRef</label>
+                    {researcher.identifiers.idref && (
+                      <a href={`https://www.idref.fr/${researcher.identifiers.idref}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[8px] font-bold text-pixel-blue hover:underline">
+                        <ExternalLink className="w-3 h-3" /> idref.fr
+                      </a>
+                    )}
+                  </div>
                   <input type="text" value={researcher.identifiers.idref || ''} onChange={(e) => onUpdateField('idref', e.target.value, 'identifiers')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono tracking-tighter" />
                </div>
                <div className="space-y-1">
-                  <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">IdHAL</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">IdHAL</label>
+                    {researcher.identifiers.halId && (
+                      <a href={`https://hal.science/search/index/q/*/authIdHal_s/${researcher.identifiers.halId}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[8px] font-bold text-gray-500 hover:underline">
+                        <ExternalLink className="w-3 h-3" /> hal.science
+                      </a>
+                    )}
+                  </div>
                   <input type="text" value={researcher.identifiers.halId || ''} onChange={(e) => onUpdateField('halId', e.target.value, 'identifiers')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono tracking-tighter" />
                </div>
                <div className="space-y-1">
-                  <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Scopus ID</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[8px] font-bold text-gray-400 uppercase font-mono">Scopus ID</label>
+                    {researcher.identifiers.scopusId && (
+                      <a href={`https://www.scopus.com/authid/detail.uri?authorId=${researcher.identifiers.scopusId}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[8px] font-bold text-[#FF8200] hover:underline">
+                        <ExternalLink className="w-3 h-3" /> scopus.com
+                      </a>
+                    )}
+                  </div>
                   <input type="text" value={researcher.identifiers.scopusId || ''} onChange={(e) => onUpdateField('scopusId', e.target.value, 'identifiers')} className="w-full border-2 border-black dark:border-white p-2 bg-white dark:bg-slate-800 dark:text-white text-[10px] font-mono tracking-tighter" />
                </div>
             </div>

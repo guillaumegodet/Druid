@@ -126,7 +126,7 @@ export const GroupList: React.FC<GroupListProps> = ({ researchers, setResearcher
             <h2 className="text-3xl font-pixel text-gray-900 dark:text-white tracking-tight">
               GROUPES FONCTIONNELS
             </h2>
-            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-yellow/20 text-gray-900 dark:text-pixel-yellow uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-yellow text-gray-900 uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                {groups.length} {groups.length > 1 ? 'GROUPS' : 'GROUP'}
             </span>
           </div>
@@ -181,14 +181,14 @@ export const GroupList: React.FC<GroupListProps> = ({ researchers, setResearcher
                         <td className="px-6 py-4">{isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 border-2 border-black dark:border-white bg-pixel-yellow/20 flex items-center justify-center text-pixel-yellow-dark dark:text-pixel-yellow font-pixel text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="w-8 h-8 border-2 border-black dark:border-white bg-pixel-yellow text-gray-900 flex items-center justify-center font-pixel text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                               <Layers className="w-4 h-4" />
                             </div>
                             <span className="text-[12px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{group.name}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border-2 border-black dark:border-pixel-yellow bg-pixel-yellow/10 text-slate-900 dark:text-pixel-yellow text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 border-2 border-black bg-pixel-yellow text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                             {groupCounts[group.name] || 0} MEMBRES
                           </span>
                         </td>
@@ -259,7 +259,7 @@ export const GroupList: React.FC<GroupListProps> = ({ researchers, setResearcher
                                 {getGroupMembers(group.name).map(m => (
                                   <div key={m.id} className="bg-white dark:bg-slate-800 p-3 border-2 border-black dark:border-white flex justify-between items-center group/member shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                     <div className="flex items-center gap-2">
-                                      <div className="w-6 h-6 bg-pixel-blue/20 text-pixel-blue font-pixel flex items-center justify-center text-xs">
+                                      <div className="w-6 h-6 bg-pixel-pink text-white font-pixel flex items-center justify-center text-xs">
                                         {m.displayName.charAt(0)}
                                       </div>
                                       <span className="text-[10px] font-bold uppercase truncate dark:text-gray-300">{m.displayName}</span>

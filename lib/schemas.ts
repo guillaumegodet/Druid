@@ -38,6 +38,7 @@ export const EmploymentSchema = z.object({
   cnu: z.string().optional().nullable(),
   startDate: z.string().optional().nullable(),
   endDate: z.string().optional().nullable(),
+  ldapFields: z.array(z.string()).optional().default([]),
 });
 
 export const NURelatedSchema = z.object({
@@ -76,6 +77,7 @@ export const ResearcherSchema = z.object({
   groups: z.array(z.string()).default([]),
   identifiers: ResearcherIdentifiersSchema,
   nuFields: NURelatedSchema.optional(),
+  ldapFields: z.array(z.string()).optional().default([]),
   lastSync: z.string().optional().nullable(),
 });
 

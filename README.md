@@ -1,79 +1,113 @@
-# 🧙‍♂️ Druid (Directory for Researchers, Units & Identifiers)
+# Druid — Directory of Researchers for University Institutions
 
-**Druid** est une plateforme de gestion et de pilotage des personnels de recherche. Conçue pour centraliser les identités, les affiliations et les indicateurs RH de la recherche, elle fait le pont entre les sources institutionnelles (LDAP) et la curation collaborative (Grist).
+Druid is a web application for managing and browsing your institution's research directory. It reads researchers and structures from a [Grist](https://grist.numerique.gouv.fr) document and lets you explore, filter, edit and export them.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![React](https://img.shields.io/badge/Stack-React_19-61dafb.svg)
-![Vite](https://img.shields.io/badge/Stack-Vite_6-646cff.svg)
-![Tailwind](https://img.shields.io/badge/Styling-Tailwind_3-38bdf8.svg)
+## Features
 
----
+- Browse researchers and research structures from Grist
+- Filter by status, employer, lab, grade, contract type, identifier presence
+- Edit researcher records and write changes back to Grist
+- Export the directory as CSV (`people.csv`) for CRISalid / SoVisu+
+- Optional LDAP enrichment (status, civility, birth date, EPPN)
+- Optional Keycloak authentication
 
-## 🚀 Fonctionnalités Clés
+## Quick start
 
-### 📂 Gestion des Identités & Curation
-- **Synchro Multi-sources** : Récupération automatique des statuts et dates de naissance depuis le LDAP Université.
-- **Curation Collaborative** : Interface fluide pour modifier et valider les données directement synchronisées avec **Grist**.
-- **Gestion des Affiliations** : Suivi précis des rattachements aux laboratoires et équipes de recherche.
+### 1. Copy the example env file
 
-### 📊 Dashboard Analytique (Dataviz)
-Visualisations dynamiques basées sur les filtres actifs :
-- **Parité Genre** : Analyse de la répartition Hommes/Femmes.
-- **Pyramide des Âges** : Tranches d'âges basées sur les données LDAP.
-- **Répartition par Grade** : identification des corps et grades dominants.
-- **Top Employeurs & Labos** : Mapping des forces vives par tutelles et appartenances.
-
-### 🔍 Filtres Avancés & Intelligence de Données
-- **Moteur de Recherche** : Recherche plein texte sur l'identité, l'email ou le labo.
-- **Filtres par Pôle** : Mapping intelligent déduisant automatiquement le Pôle (Humanités, S&T, Santé, Sociétés) à partir du laboratoire.
-- **Filtre Temporel** : Visualisation des chercheurs présents sur une période donnée (Date d'arrivée / départ).
-
----
-
-## 🛠️ Stack Technique
-
-- **Frontend** : [React 19](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/)
-- **Build Tool** : [Vite](https://vitejs.dev/)
-- **Visualisation** : [Recharts](https://recharts.org/)
-- **Design System** : [Tailwind CSS](https://tailwindcss.com/)
-- **Iconographie** : [Lucide React](https://lucide.dev/)
-- **Backend (Proxy/Sync)** : Intégration custom dans les middlewares Vite pour l'exécution de scripts Node de synchronisation.
-
----
-
-## ⚙️ Configuration & Installation
-
-### Pré-requis
-- Node.js (v18+)
-- Accès au LDAP Université (VPN nécessaire pour la synchro)
-
-### Installation
 ```bash
-# Installation des dépendances
-npm install
-
-# Lancement en mode développement
-npm run dev
+cp .env.example .env
 ```
 
-### Variables d'environnement
-Le projet utilise un fichier `.env` pour sécuriser les accès :
-- `VITE_GRIST_API_KEY` : Clé API pour la lecture/écriture dans Grist.
-- `LDAP_PASSWORD` : Identifiants pour le script de synchronisation.
+Edit `.env` and set at minimum:
 
----
+```
+VITE_GRIST_DOC_ID=<your-grist-doc-id>
+VITE_GRIST_RESEARCHERS_TABLE=Annuaire   # table name in your Grist doc
+VITE_GRIST_STRUCTURES_TABLE=Structures  # table name in your Grist doc
+```
 
-## 📁 Structure du Projet
+### 2. Run with Docker Compose
 
-- `/components` : Composants UI (Dashboard, Liste, Détails).
-- `/lib` : Services API (Grist) et référentiels de mappings (Labos/Pôles).
-- `/scripts` : Scripts de synchronisation LDAP (`sync_ldap.cjs`).
-- `/public` : Cache local des données LDAP (`ldap_status_cache.json`).
+```bash
+docker compose up --build
+```
 
----
+Open http://localhost:3000.
 
-## 🤝 Contribution
-Ce projet est développé pour optimiser le pilotage de la recherche. Pour toute demande de nouveau graphique ou de nouvelle source de données, veuillez contacter l'administrateur du projet.
+### 3. Run without Docker
 
----
-*Réalisé avec ❤️ par le service Bibliométrie du SCD de Nantes Université pour l'excellence de la recherche.*
+```bash
+npm install
+npm run build
+node server.cjs
+```
+
+## Grist document schema
+
+Druid expects the following column names in your researchers table:
+
+| Column | Description |
+|---|---|
+| `tracking_id` | Internal UID / identifier |
+| `last_name` | Family name |
+| `first_names` | Given name(s) |
+| `gender` | `M` or `F` |
+| `bithdate` | Birth date (YYYY-MM-DD) — note the column name typo |
+| `contact_email` | Professional email |
+| `nationality` | Nationality |
+| `status` | `INTERNE`, `EXTERNE`, `DEPART`, or `PARTI` |
+| `eppn` | eduPersonPrincipalName (for SoVisu+ export) |
+| `orcid` | ORCID identifier |
+| `idref` | IdRef identifier |
+| `idhals` | HAL author identifier |
+| `scopus` | Scopus ID |
+| `position` | Grade / position |
+| `membership_type` | Contract type |
+| `institution_identifier` | UAI or institution code |
+| `institution_id_nomenclature` | Institution label |
+| `employment_start_date` | Start date (YYYY-MM-DD) |
+| `employment_end_date` | End date (YYYY-MM-DD) |
+| `main_research_structure` | Lab / unit acronym |
+| `team` | Internal team |
+| `membership_start_date` | Membership start date |
+| `membership_end_date` | Membership end date |
+| `hdr` | `true` / `false` — Habilitation à Diriger des Recherches |
+| `localisation` | Campus / site |
+
+A public demo document is available at: `bWVMq9SHJes7ngCuHsN9iD`
+
+Set `VITE_GRIST_DOC_ID=bWVMq9SHJes7ngCuHsN9iD` and `VITE_GRIST_RESEARCHERS_TABLE=Annuaire_chercheursNU_Annuaire_1_` to try the demo (read-only, no API key needed).
+
+## Authentication
+
+By default authentication is disabled (`DRUID_AUTH_ENABLED=false`). To enable Keycloak:
+
+```
+DRUID_AUTH_ENABLED=true
+KEYCLOAK_URL=https://your-keycloak:8080
+KEYCLOAK_REALM=your-realm
+KEYCLOAK_CLIENT_ID=druid
+SESSION_SECRET=<random-string>
+APP_URL=https://your-druid-public-url
+```
+
+## LDAP enrichment (optional)
+
+When configured, the "Sync LDAP" button enriches researcher records with live LDAP data (status, civility, birth date, EPPN) and caches the result in `ldap_status_cache.json`.
+
+```
+LDAP_URL=ldaps://your-ldap-server
+LDAP_BIND_DN=cn=service,ou=Applications,dc=example,dc=fr
+LDAP_BIND_PW=your-password
+LDAP_BASE_DN=ou=People,dc=example,dc=fr
+LDAP_FILTER=(&(objectClass=supannPerson)(population=PERSONNEL))
+```
+
+## CSV export for SoVisu+ / CRISalid
+
+The "Synchroniser avec SoVisu+" button builds a `people.csv` file and triggers a browser download. This file can be loaded into the CRISalid data pipeline.
+
+## License
+
+[EUPL-1.2](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)

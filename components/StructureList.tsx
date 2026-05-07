@@ -154,7 +154,7 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
 
   const getStatusBadge = (status: string) => {
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${status === 'ACTIVE' || status === StructureStatus.ACTIVE ? 'bg-pixel-teal/20 text-slate-900 dark:text-pixel-teal dark:border-pixel-teal' : 'bg-pixel-blue/20 text-slate-900 dark:text-pixel-blue dark:border-pixel-blue'}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] ${status === 'ACTIVE' || status === StructureStatus.ACTIVE ? 'bg-pixel-teal text-gray-900' : 'bg-pixel-blue text-white'}`}>
         {status === 'ACTIVE' || status === StructureStatus.ACTIVE ? <CheckCircle className="w-3 h-3" /> : ''}
         {status}
       </span>
@@ -189,7 +189,7 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
             <h2 className="text-3xl font-pixel text-gray-900 dark:text-white tracking-tight">
               STRUCTURES DE RECHERCHE
             </h2>
-            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-teal/20 text-gray-900 dark:text-pixel-teal uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-teal text-gray-900 uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                {sortedStructures.length} {sortedStructures.length > 1 ? 'RECORDS' : 'RECORD'}
             </span>
           </div>
@@ -311,13 +311,13 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
               </thead>
               <tbody className="bg-white dark:bg-slate-900">
                 {paginatedStructures.map((s) => (
-                  <tr key={s.id} className={`hover:bg-pixel-blue/5 dark:hover:bg-pixel-blue/10 cursor-pointer border-b border-black/5 dark:border-white/5 group transition-colors ${selectedIds.has(s.id) ? 'bg-pixel-blue/10 dark:bg-pixel-blue/20' : ''}`} onClick={() => onSelectStructure(s)}>
+                  <tr key={s.id} className={`hover:bg-pixel-teal/5 dark:hover:bg-pixel-teal/10 cursor-pointer border-b border-black/5 dark:border-white/5 group transition-colors ${selectedIds.has(s.id) ? 'bg-pixel-teal/10 dark:bg-pixel-teal/20' : ''}`} onClick={() => onSelectStructure(s)}>
                     <td className="px-6 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(s.id); }}>
                        <input type="checkbox" className="border-2 border-black dark:border-white text-primary-dark focus:ring-0" checked={selectedIds.has(s.id)} readOnly />
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="h-10 w-10 border-2 border-black dark:border-white bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-primary-dark dark:text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <div className="h-10 w-10 border-2 border-black dark:border-white bg-pixel-teal text-gray-900 flex items-center justify-center shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                            <Network className="w-5 h-5" />
                         </div>
                         <div className="ml-4">

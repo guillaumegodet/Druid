@@ -39,13 +39,13 @@ export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, onB
   const getStatusBadge = (status: StructureStatus) => {
     switch (status) {
       case StructureStatus.ACTIVE:
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-teal bg-pixel-teal/20 text-slate-900 dark:text-pixel-teal text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">ACTIVE</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-teal text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">ACTIVE</span>;
       case StructureStatus.PROJET:
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-blue bg-pixel-blue/20 text-slate-900 dark:text-pixel-blue text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">PROJET</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-blue text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">PROJET</span>;
       case StructureStatus.EN_FERMETURE:
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-yellow bg-pixel-yellow/20 text-slate-900 dark:text-pixel-yellow text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">FERMETURE</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-yellow text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">FERMETURE</span>;
       case StructureStatus.FERMEE:
-        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-pink bg-pixel-pink/20 text-slate-900 dark:text-pixel-pink text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">FERMÉE</span>;
+        return <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-pink text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">FERMÉE</span>;
     }
   };
 
@@ -97,7 +97,7 @@ export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, onB
             <button 
               onClick={handleSave} 
               disabled={isSaving}
-              className="flex items-center gap-2 px-6 py-2 text-[10px] font-bold uppercase text-white bg-primary-dark border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-6 py-2 text-[10px] font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50"
             >
                {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                {isSaving ? 'EN COURS...' : 'ENREGISTRER'}

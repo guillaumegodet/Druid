@@ -120,6 +120,18 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
       .slice(0, 8);
   }, [researchers]);
 
+  const contractTypeData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    researchers.forEach(r => {
+      const ct = r.employment.contractType || 'Non défini';
+      counts[ct] = (counts[ct] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [researchers]);
+
   const stats = useMemo(() => {
     const hdrCount = researchers.filter(r => r.nuFields?.hdr).length;
     return {
@@ -160,8 +172,8 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
       {/* Tuiles de Stats Rapides */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-slate-900 p-6 border-2 border-black dark:border-white shadow-pixel flex items-center gap-5 transition-all">
-          <div className="p-3 bg-pixel-blue/10 border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
-            <Users className="w-7 h-7 text-gray-900 dark:text-pixel-blue" />
+          <div className="p-3 bg-pixel-blue border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <Users className="w-7 h-7 text-white" />
           </div>
           <div>
             <p className="text-[10px] text-gray-500 uppercase font-mono font-bold tracking-widest mb-1">Effectifs</p>
@@ -170,8 +182,8 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
         </div>
         
         <div className="bg-white dark:bg-slate-900 p-6 border-2 border-black dark:border-white shadow-pixel flex items-center gap-5 transition-all">
-          <div className="p-3 bg-pixel-pink/10 border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
-            <Activity className="w-7 h-7 text-gray-900 dark:text-pixel-pink" />
+          <div className="p-3 bg-pixel-pink border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <Activity className="w-7 h-7 text-white" />
           </div>
           <div>
             <p className="text-[10px] text-gray-500 uppercase font-mono font-bold tracking-widest mb-1">Taux de HDR</p>
@@ -180,8 +192,8 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-6 border-2 border-black dark:border-white shadow-pixel flex items-center gap-5 transition-all">
-          <div className="p-3 bg-pixel-teal/10 border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
-            <UserPlus className="w-7 h-7 text-gray-900 dark:text-pixel-teal" />
+          <div className="p-3 bg-pixel-teal border-2 border-black dark:border-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <UserPlus className="w-7 h-7 text-gray-900" />
           </div>
           <div>
             <p className="text-[10px] text-gray-500 uppercase font-mono font-bold tracking-widest mb-1">Total HDR</p>
@@ -311,6 +323,25 @@ export const ResearcherDashboard: React.FC<ResearcherDashboardProps> = ({ resear
                 <YAxis dataKey="name" type="category" width={90} axisLine={false} tickLine={false} tick={{ fontSize: 9, fill: '#64748b', fontWeight: 'bold' }} />
                 <Tooltip cursor={{ fill: '#00000005' }} contentStyle={{ border: '2px solid black', fontFamily: 'monospace', fontSize: '10px' }} />
                 <Bar dataKey="value" fill={COLORS.primary} stroke="#000" strokeWidth={1} radius={0} barSize={15} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Répartition par Type d'emploi */}
+        <div className="bg-white dark:bg-slate-900 p-6 border-2 border-black dark:border-white shadow-pixel h-[380px] flex flex-col transition-all">
+          <h3 className="text-xl font-pixel mb-4 flex items-center gap-2 dark:text-white uppercase tracking-tight">
+            <BarChart3 className="w-5 h-5 text-pixel-pink" /> Type d'emploi (Top 10)
+          </h3>
+          <div className="flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={contractTypeData} layout="vertical" margin={{ left: 10, right: 40 }}>
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={130} axisLine={false} tickLine={false} tick={{ fontSize: 8, fill: '#64748b', fontWeight: 'bold' }} />
+                <Tooltip cursor={{ fill: '#00000005' }} contentStyle={{ border: '2px solid black', fontFamily: 'monospace', fontSize: '10px' }} />
+                <Bar dataKey="value" fill="#f20066" stroke="#000" strokeWidth={1} radius={0} barSize={13}>
+                  <LabelList dataKey="value" position="right" style={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8', fontFamily: 'monospace' }} />
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>

@@ -1,16 +1,74 @@
-import React, { useState, useMemo } from 'react';
-import { 
-  CheckCircle, AlertCircle, RefreshCw, Clock, XCircle, MoreHorizontal, 
-  Search, Merge, FileDown, Filter, Users, X, ArrowUp, ArrowDown, ArrowUpDown, Plus, LayoutGrid, List
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import {
+  CheckCircle, AlertCircle, RefreshCw, Clock, XCircle, MoreHorizontal,
+  Search, Merge, FileDown, Filter, Users, X, ArrowUp, ArrowDown, ArrowUpDown, Plus, LayoutGrid, List, ChevronDown
 } from 'lucide-react';
 import { ResearcherDashboard } from './ResearcherDashboard';
 import { Researcher, ResearcherStatus } from '../types';
 import { SYNC_SOURCES } from '../constants';
 import { SyncDialog } from './SyncDialog';
-import { POLE_LAB_MAPPING, getPoleFromLab } from '../lib/mappings';
 import { ExportService } from '../lib/exportService';
 import { ResearcherIcons } from './researchers/ResearcherIcons';
 import { useUrlState } from '../hooks/useUrlState';
+import { hasRole } from '../lib/auth';
+
+const MultiSelectFilter: React.FC<{
+  label: string;
+  options: { value: string; label: string }[];
+  selected: string[];
+  onChange: (values: string[]) => void;
+}> = ({ label, options, selected, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const toggle = (val: string) => {
+    if (selected.includes(val)) onChange(selected.filter(v => v !== val));
+    else onChange([...selected, val]);
+  };
+
+  const buttonLabel = selected.length === 0
+    ? 'TOUS'
+    : selected.length === 1
+      ? (options.find(o => o.value === selected[0])?.label ?? selected[0])
+      : `${selected.length} sélectionnés`;
+
+  return (
+    <div className="space-y-1 relative" ref={ref}>
+      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">{label}</label>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className={`w-full border-2 p-1 text-[10px] font-bold flex items-center justify-between gap-1 min-w-[120px] bg-white dark:bg-slate-800 dark:text-white transition-colors ${selected.length > 0 ? 'border-pixel-blue text-pixel-blue' : 'border-black dark:border-white'}`}
+      >
+        <span className="truncate max-w-[130px]">{buttonLabel}</span>
+        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-30 min-w-[200px] max-h-[280px] overflow-y-auto">
+          <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black/20 dark:border-white/20 transition-colors">
+            <input type="checkbox" checked={selected.length === 0} onChange={() => onChange([])} className="accent-current" />
+            <span className="text-[10px] font-bold uppercase font-mono">TOUS</span>
+          </label>
+          {options.map(opt => (
+            <label key={opt.value} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors">
+              <input type="checkbox" checked={selected.includes(opt.value)} onChange={() => toggle(opt.value)} className="accent-current" />
+              <span className="text-[10px] font-bold uppercase font-mono truncate">{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 /**
  * Props pour le composant ResearcherList
@@ -28,6 +86,8 @@ interface ResearcherListProps {
   loading?: boolean;
   /** Callback pour forcer la synchronisation manuelle */
   onManualSync?: () => void;
+  /** Callback pour exporter vers people.csv (SoVisu+) */
+  onSyncToSovisu?: () => void;
 }
 
 /** Clés autorisées pour le tri de la table */
@@ -39,22 +99,9 @@ type SortKey = 'displayName' | 'status' | 'employer' | 'structureName' | 'team';
  * Incorpore la recherche textuelle, des filtres multicritères avancés, 
  * le tri multi-colonnes et des actions de masse (groupe, fusion).
  */
-export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, setResearchers, onSelectResearcher, onNewResearcher, loading = false, onManualSync }) => {
+export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, setResearchers, onSelectResearcher, onNewResearcher, loading = false, onManualSync, onSyncToSovisu }) => {
   // 1. Enrichissement des données en temps réel (Priorité calcul > Grist vide)
-  const enrichedResearchers = useMemo(() => {
-    return researchers.map(r => {
-      const primaryLab = r.affiliations.find(a => a.isPrimary)?.structureName || r.affiliations[0]?.structureName || '';
-      const calculatedPole = getPoleFromLab(primaryLab);
-      
-      return {
-        ...r,
-        nuFields: {
-          ...r.nuFields,
-          pole: r.nuFields?.pole || calculatedPole
-        }
-      };
-    });
-  }, [researchers]);
+  const enrichedResearchers = useMemo(() => researchers, [researchers]);
 
   // États de sélection et recherche
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
@@ -62,41 +109,37 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   const [searchTerm, setSearchTerm] = useState('');
   
   // États des filtres avancés
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [filterEmployer, setFilterEmployer] = useState<string>('ALL');
-  const [filterLab, setFilterLab] = useState<string>('ALL');
-  const [filterTypology, setFilterTypology] = useState<string>('ALL');
-  const [filterPole, setFilterPole] = useState<string>('ALL');
+  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterEmployers, setFilterEmployers] = useState<string[]>([]);
+  const [filterLabs, setFilterLabs] = useState<string[]>([]);
+  const [filterGrades, setFilterGrades] = useState<string[]>([]);
+  const [filterContractTypes, setFilterContractTypes] = useState<string[]>([]);
+  const [filterPoles, setFilterPoles] = useState<string[]>([]);
 
   // Synchronisation avec l'URL
+  const splitFilter = (v: string) => v ? v.split(',').filter(Boolean) : [];
+
   const { setUrlState } = useUrlState(
-    { 
-      search: '', 
-      status: 'ALL', 
-      employer: 'ALL', 
-      lab: 'ALL', 
-      typology: 'ALL', 
-      pole: 'ALL',
-      mode: 'list'
-    },
+    { search: '', status: '', employer: '', lab: '', grade: '', contractType: '', pole: '', mode: 'list' },
     (newState) => {
       if (newState.search !== undefined) setSearchTerm(newState.search || '');
-      if (newState.status !== undefined) setFilterStatus(newState.status || 'ALL');
-      if (newState.employer !== undefined) setFilterEmployer(newState.employer || 'ALL');
-      if (newState.lab !== undefined) setFilterLab(newState.lab || 'ALL');
-      if (newState.typology !== undefined) setFilterTypology(newState.typology || 'ALL');
-      if (newState.pole !== undefined) setFilterPole(newState.pole || 'ALL');
+      if (newState.status !== undefined) setFilterStatuses(splitFilter(newState.status || ''));
+      if (newState.employer !== undefined) setFilterEmployers(splitFilter(newState.employer || ''));
+      if (newState.lab !== undefined) setFilterLabs(splitFilter(newState.lab || ''));
+      if (newState.grade !== undefined) setFilterGrades(splitFilter(newState.grade || ''));
+      if (newState.contractType !== undefined) setFilterContractTypes(splitFilter(newState.contractType || ''));
+      if (newState.pole !== undefined) setFilterPoles(splitFilter(newState.pole || ''));
       if (newState.mode !== undefined) setViewMode((newState.mode as 'list' | 'dashboard') || 'list');
     }
   );
 
-  // Mise à jour de l'URL lors des changements d'état
   const updateSearch = (val: string) => { setSearchTerm(val); setUrlState({ search: val }); };
-  const updateStatus = (val: string) => { setFilterStatus(val); setUrlState({ status: val }); };
-  const updateEmployer = (val: string) => { setFilterEmployer(val); setUrlState({ employer: val }); };
-  const updateLab = (val: string) => { setFilterLab(val); setUrlState({ lab: val }); };
-  const updateTypology = (val: string) => { setFilterTypology(val); setUrlState({ typology: val }); };
-  const updatePole = (val: string) => { setFilterPole(val); setUrlState({ pole: val }); };
+  const updateStatuses = (vals: string[]) => { setFilterStatuses(vals); setUrlState({ status: vals.join(',') }); };
+  const updateEmployers = (vals: string[]) => { setFilterEmployers(vals); setUrlState({ employer: vals.join(',') }); };
+  const updateLabs = (vals: string[]) => { setFilterLabs(vals); setUrlState({ lab: vals.join(',') }); };
+  const updateGrades = (vals: string[]) => { setFilterGrades(vals); setUrlState({ grade: vals.join(',') }); };
+  const updateContractTypes = (vals: string[]) => { setFilterContractTypes(vals); setUrlState({ contractType: vals.join(',') }); };
+  const updatePoles = (vals: string[]) => { setFilterPoles(vals); setUrlState({ pole: vals.join(',') }); };
   const updateViewMode = (val: 'list' | 'dashboard') => { setViewMode(val); setUrlState({ mode: val }); };
 
   // Configuration du tri
@@ -128,8 +171,9 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
   /** Extraction dynamique des valeurs uniques pour remplir les sélecteurs de filtres */
   const employers = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.employer).filter(Boolean))), [enrichedResearchers]);
   const labs = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.affiliations.map(a => a.structureName)).filter(Boolean))), [enrichedResearchers]);
-  const typologies = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.internalTypology).filter(Boolean))), [enrichedResearchers]);
-  const poles = useMemo(() => Object.keys(POLE_LAB_MAPPING), []);
+  const grades = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.grade).filter(Boolean))).sort() as string[], [enrichedResearchers]);
+  const contractTypes = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.contractType).filter(Boolean))).sort() as string[], [enrichedResearchers]);
+  const poles = useMemo(() => [...new Set(enrichedResearchers.map(r => r.nuFields?.pole || '').filter(Boolean))].sort(), [enrichedResearchers]);
   const allGroups = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.groups))).sort(), [enrichedResearchers]);
 
   /** 
@@ -145,11 +189,12 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
         primaryLab.toLowerCase().includes(searchTerm.toLowerCase()) ||
         r.email.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = filterStatus === 'ALL' || r.status === filterStatus;
-      const matchesEmployer = filterEmployer === 'ALL' || r.employment.employer === filterEmployer;
-      const matchesLab = filterLab === 'ALL' || r.affiliations.some(a => a.structureName === filterLab);
-      const matchesTypology = filterTypology === 'ALL' || r.employment.internalTypology === filterTypology;
-      const matchesPole = filterPole === 'ALL' || r.nuFields?.pole === filterPole;
+      const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(r.status);
+      const matchesEmployer = filterEmployers.length === 0 || filterEmployers.includes(r.employment.employer);
+      const matchesLab = filterLabs.length === 0 || r.affiliations.some(a => filterLabs.includes(a.structureName));
+      const matchesGrade = filterGrades.length === 0 || filterGrades.includes(r.employment.grade || '');
+      const matchesContractType = filterContractTypes.length === 0 || filterContractTypes.includes(r.employment.contractType || '');
+      const matchesPole = filterPoles.length === 0 || filterPoles.includes(r.nuFields?.pole || '');
 
       const researcherArrival = r.employment.startDate;
       const researcherDeparture = r.employment.endDate;
@@ -164,14 +209,14 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
         (!idFilters.idref || !!r.identifiers.idref) &&
         (!idFilters.scopus || !!r.identifiers.scopusId);
 
-      return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesTypology && matchesPole && matchesPeriod && matchesIds;
+      return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesGrade && matchesContractType && matchesPole && matchesPeriod && matchesIds;
     });
-  }, [researchers, searchTerm, filterStatus, filterEmployer, filterLab, filterTypology, filterPole, filterDateStart, filterDateEnd, idFilters]);
+  }, [researchers, searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterPoles, filterDateStart, filterDateEnd, idFilters]);
 
   // Réinitialiser la pagination lors d'un changement de filtre
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatus, filterEmployer, filterLab, filterTypology, filterPole, filterDateStart, filterDateEnd]);
+  }, [searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterPoles, filterDateStart, filterDateEnd]);
 
   /** LOGIQUE DE TRI appliqué après le filtrage */
   const sortedResearchers = useMemo(() => {
@@ -272,25 +317,25 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
     switch (status) {
       case ResearcherStatus.INTERNE:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-teal bg-pixel-teal/20 text-slate-900 dark:text-pixel-teal text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-teal text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
             <CheckCircle className="w-3 h-3" /> Interne
           </span>
         );
       case ResearcherStatus.DEPART:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-pink bg-pixel-pink/20 text-slate-900 dark:text-pixel-pink text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-pink text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
             <XCircle className="w-3 h-3" /> Départ
           </span>
         );
       case ResearcherStatus.PARTI:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-blue bg-pixel-blue/20 text-slate-900 dark:text-pixel-blue text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-blue text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
             <Clock className="w-3 h-3" /> Parti
           </span>
         );
       case ResearcherStatus.EXTERNE:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-pixel-yellow bg-pixel-yellow/20 text-slate-900 dark:text-pixel-yellow text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-yellow text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
             <AlertCircle className="w-3 h-3" /> Externe
           </span>
         );
@@ -374,7 +419,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
             <h2 className="text-3xl font-pixel text-gray-900 dark:text-white tracking-tight">
               PERSONNEL DE RECHERCHE
             </h2>
-            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-blue/20 text-gray-900 dark:text-pixel-blue uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] dark:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)]">
+            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-pink text-white uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                {sortedResearchers.length} {sortedResearchers.length > 1 ? 'RECORDS' : 'RECORD'}
             </span>
           </div>
@@ -397,13 +442,13 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                   <div className="hidden sm:flex border-2 border-black dark:border-white p-1 bg-white dark:bg-slate-800 shadow-pixel-sm">
                     <button 
                       onClick={() => updateViewMode('list')}
-                      className={`p-1.5 transition-all ${viewMode === 'list' ? 'bg-primary-dark text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
+                      className={`p-1.5 transition-all ${viewMode === 'list' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
                     >
                       <List className="w-4 h-4" />
                     </button>
-                    <button 
+                    <button
                       onClick={() => updateViewMode('dashboard')}
-                      className={`p-1.5 transition-all ${viewMode === 'dashboard' ? 'bg-primary-dark text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
+                      className={`p-1.5 transition-all ${viewMode === 'dashboard' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
                     >
                       <LayoutGrid className="w-4 h-4" />
                     </button>
@@ -434,32 +479,43 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                </button>
             </div>
           </div>
-          <button onClick={onNewResearcher} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-teal border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-            <Plus className="w-4 h-4" /> Nouveau
-          </button>
-          <div className="relative">
-            <button onClick={() => setShowSyncMenu(!showSyncMenu)} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-primary-dark border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Synchroniser
-            </button>
-            {showSyncMenu && (
-              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 overflow-hidden">
-                <button 
-                  onClick={() => { setShowSyncMenu(false); onManualSync?.(); }} 
-                  className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
-                >
-                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                  Forcer mise à jour Grist
+          {hasRole('admin') && (
+            <>
+              <button onClick={onNewResearcher} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-teal border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                <Plus className="w-4 h-4" /> Nouveau
+              </button>
+              <div className="relative">
+                <button onClick={() => setShowSyncMenu(!showSyncMenu)} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Synchroniser
                 </button>
-                <button 
-                  onClick={() => { setShowSyncMenu(false); onManualSync?.(); }} 
-                  className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-emerald-600 dark:text-pixel-teal hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
-                >
-                  <Users className="w-4 h-4" />
-                  Synchroniser LDAP
-                </button>
+                {showSyncMenu && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 overflow-hidden">
+                    <button 
+                      onClick={() => { setShowSyncMenu(false); onManualSync?.(); }} 
+                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                      Forcer mise à jour Grist
+                    </button>
+                    <button
+                      onClick={() => { setShowSyncMenu(false); onManualSync?.(); }}
+                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-emerald-600 dark:text-pixel-teal hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
+                    >
+                      <Users className="w-4 h-4" />
+                      Synchroniser LDAP
+                    </button>
+                    <button
+                      onClick={() => { setShowSyncMenu(false); onSyncToSovisu?.(); }}
+                      className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Synchroniser avec SoVisu+
+                    </button>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </header>
 
@@ -488,68 +544,52 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
             <div className="flex flex-wrap gap-2 pt-2 border-t-2 border-black/10 dark:border-white/10">
               <Filter className="w-4 h-4 text-gray-400 mt-1.5" />
               
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">STATUT</label>
-                      <select 
-                        value={filterStatus}
-                        onChange={(e) => updateStatus(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white p-1 text-[10px] font-bold bg-white dark:bg-slate-800 dark:text-white"
-                      >
-                        <option value="ALL">TOUS STATUTS</option>
-                        <option value={ResearcherStatus.INTERNE}>INTERNE</option>
-                        <option value={ResearcherStatus.DEPART}>DÉPART</option>
-                        <option value={ResearcherStatus.PARTI}>PARTI</option>
-                        <option value={ResearcherStatus.EXTERNE}>EXTERNE</option>
-                      </select>
-                    </div>
+                    <MultiSelectFilter
+                      label="STATUT"
+                      options={[
+                        { value: ResearcherStatus.INTERNE, label: 'INTERNE' },
+                        { value: ResearcherStatus.DEPART,  label: 'DÉPART' },
+                        { value: ResearcherStatus.PARTI,   label: 'PARTI' },
+                        { value: ResearcherStatus.EXTERNE, label: 'EXTERNE' },
+                      ]}
+                      selected={filterStatuses}
+                      onChange={updateStatuses}
+                    />
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">EMPLOYEUR</label>
-                      <select 
-                        value={filterEmployer}
-                        onChange={(e) => updateEmployer(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white p-1 text-[10px] font-bold bg-white dark:bg-slate-800 dark:text-white"
-                      >
-                        <option value="ALL">TOUS EMPLOYEURS</option>
-                        {employers.map(e => <option key={e} value={e}>{e}</option>)}
-                      </select>
-                    </div>
+                    <MultiSelectFilter
+                      label="EMPLOYEUR"
+                      options={employers.map(e => ({ value: e, label: e }))}
+                      selected={filterEmployers}
+                      onChange={updateEmployers}
+                    />
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">LABO (AFFIL. PRINCIPALE)</label>
-                      <select 
-                        value={filterLab}
-                        onChange={(e) => updateLab(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white p-1 text-[10px] font-bold bg-white dark:bg-slate-800 dark:text-white"
-                      >
-                        <option value="ALL">TOUS LABORATOIRES</option>
-                        {labs.map(l => <option key={l} value={l}>{l}</option>)}
-                      </select>
-                    </div>
+                    <MultiSelectFilter
+                      label="LABO (AFFIL. PRINCIPALE)"
+                      options={labs.map(l => ({ value: l, label: l }))}
+                      selected={filterLabs}
+                      onChange={updateLabs}
+                    />
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">TYPOLOGIE INTERNE</label>
-                      <select 
-                        value={filterTypology}
-                        onChange={(e) => updateTypology(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white p-1 text-[10px] font-bold bg-white dark:bg-slate-800 dark:text-white"
-                      >
-                        <option value="ALL">TOUTES TYPOLOGIES</option>
-                        {typologies.map(t => <option key={t} value={t}>{t}</option>)}
-                      </select>
-                    </div>
+                    <MultiSelectFilter
+                      label="GRADE / CORPS"
+                      options={grades.map(g => ({ value: g, label: g }))}
+                      selected={filterGrades}
+                      onChange={updateGrades}
+                    />
 
-                    <div className="space-y-1">
-                      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">PÔLE S&T</label>
-                      <select 
-                        value={filterPole}
-                        onChange={(e) => updatePole(e.target.value)}
-                        className="w-full border-2 border-black dark:border-white p-1 text-[10px] font-bold bg-white dark:bg-slate-800 dark:text-white"
-                      >
-                        <option value="ALL">TOUS PÔLES</option>
-                        {poles.map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </div>
+                    <MultiSelectFilter
+                      label="TYPE D'EMPLOI"
+                      options={contractTypes.map(c => ({ value: c, label: c }))}
+                      selected={filterContractTypes}
+                      onChange={updateContractTypes}
+                    />
+
+                    <MultiSelectFilter
+                      label="PÔLE S&T"
+                      options={poles.map(p => ({ value: p, label: p }))}
+                      selected={filterPoles}
+                      onChange={updatePoles}
+                    />
               
               <div className="flex flex-wrap gap-4 pt-4 border-t-2 border-black/10 dark:border-white/10 mt-2">
                 <div className="flex items-center gap-2">
@@ -623,13 +663,13 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                   </thead>
                   <tbody className="bg-white dark:bg-slate-900">
                     {paginatedResearchers.map((person) => (
-                      <tr key={person.id} className={`hover:bg-pixel-blue/5 dark:hover:bg-pixel-blue/10 cursor-pointer border-b border-black/5 dark:border-white/5 group transition-colors ${selectedIds.has(person.id) ? 'bg-pixel-blue/10 dark:bg-pixel-blue/20' : ''}`} onClick={() => onSelectResearcher(person)}>
+                      <tr key={person.id} className={`hover:bg-pixel-pink/5 dark:hover:bg-pixel-pink/10 cursor-pointer border-b border-black/5 dark:border-white/5 group transition-colors ${selectedIds.has(person.id) ? 'bg-pixel-pink/10 dark:bg-pixel-pink/20' : ''}`} onClick={() => onSelectResearcher(person)}>
                         <td className="px-6 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(person.id); }}>
                           <input type="checkbox" className="border-2 border-black dark:border-white text-primary-dark focus:ring-0" checked={selectedIds.has(person.id)} readOnly />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <div className="h-10 w-10 border-2 border-black dark:border-white bg-pixel-blue/20 flex items-center justify-center text-primary-dark dark:text-pixel-blue font-pixel text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                            <div className="h-10 w-10 border-2 border-black dark:border-white bg-pixel-pink text-white flex items-center justify-center font-pixel text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                               {person.displayName.charAt(0)}
                             </div>
                             <div className="ml-4">
@@ -689,7 +729,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, set
                           <button 
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 border-2 border-black dark:border-white text-xs font-bold transition-all shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 ${currentPage === pageNum ? 'bg-primary-dark text-white' : 'bg-white dark:bg-slate-800'}`}
+                            className={`w-8 h-8 border-2 border-black dark:border-white text-xs font-bold transition-all shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 ${currentPage === pageNum ? 'bg-pixel-blue text-white' : 'bg-white dark:bg-slate-800'}`}
                           >
                             {pageNum}
                           </button>

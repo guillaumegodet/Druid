@@ -145,10 +145,10 @@ export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, 
           <div>
             <h2 className="text-3xl font-pixel text-gray-900 dark:text-white flex items-center gap-3 uppercase tracking-wider">
               {researcher.lastName} {researcher.firstName}
-              {researcher.status === ResearcherStatus.VALIDATED && <span className="bg-pixel-teal/20 text-teal-800 dark:text-pixel-teal text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Interne</span>}
-              {researcher.status === ResearcherStatus.LEFT && <span className="bg-pixel-pink/20 text-pink-800 dark:text-pixel-pink text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Départ</span>}
-              {researcher.status === ResearcherStatus.ANTICIPATED && <span className="bg-pixel-blue/20 text-blue-800 dark:text-pixel-blue text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Parti</span>}
-              {researcher.status === ResearcherStatus.UNKNOWN && <span className="bg-pixel-yellow/20 text-yellow-800 dark:text-pixel-yellow text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Externe</span>}
+              {researcher.status === ResearcherStatus.INTERNE && <span className="bg-pixel-teal text-gray-900 text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Interne</span>}
+              {researcher.status === ResearcherStatus.DEPART && <span className="bg-pixel-pink text-white text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Départ</span>}
+              {researcher.status === ResearcherStatus.PARTI && <span className="bg-pixel-blue text-white text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Parti</span>}
+              {researcher.status === ResearcherStatus.EXTERNE && <span className="bg-pixel-yellow text-gray-900 text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Externe</span>}
             </h2>
             <p className="text-[10px] text-gray-400 font-mono font-bold uppercase mt-1">UID: {researcher.uid || 'NON-RENSEIGNÉ'} • Last Sync: {researcher.lastSync}</p>
           </div>
@@ -163,7 +163,7 @@ export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, 
           <button onClick={onBack} disabled={isSaving} className="px-6 py-2 text-[10px] font-bold uppercase text-gray-900 dark:text-white border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all bg-white dark:bg-slate-800">
              Cancel
           </button>
-          <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 text-[10px] font-bold uppercase text-white bg-primary-dark border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50">
+          <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 text-[10px] font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all disabled:opacity-50">
             {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             {researcher.id.startsWith('NEW-') ? 'Create Profile' : 'Save Changes'}
           </button>
