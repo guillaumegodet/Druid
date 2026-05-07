@@ -1,74 +1,12 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import {
-  CheckCircle, AlertCircle, RefreshCw, Clock, XCircle, MoreHorizontal,
-  Search, Merge, FileDown, Filter, Users, X, ArrowUp, ArrowDown, ArrowUpDown, Plus, LayoutGrid, List, ChevronDown
-} from 'lucide-react';
+import React, { useState } from 'react';
 import { ResearcherDashboard } from './ResearcherDashboard';
-import { Researcher, ResearcherStatus } from '../types';
-import { SYNC_SOURCES } from '../constants';
+import { Researcher } from '../types';
 import { SyncDialog } from './SyncDialog';
-import { ExportService } from '../lib/exportService';
-import { ResearcherIcons } from './researchers/ResearcherIcons';
-import { useUrlState } from '../hooks/useUrlState';
-import { hasRole } from '../lib/auth';
-
-const MultiSelectFilter: React.FC<{
-  label: string;
-  options: { value: string; label: string }[];
-  selected: string[];
-  onChange: (values: string[]) => void;
-}> = ({ label, options, selected, onChange }) => {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  const toggle = (val: string) => {
-    if (selected.includes(val)) onChange(selected.filter(v => v !== val));
-    else onChange([...selected, val]);
-  };
-
-  const buttonLabel = selected.length === 0
-    ? 'TOUS'
-    : selected.length === 1
-      ? (options.find(o => o.value === selected[0])?.label ?? selected[0])
-      : `${selected.length} sélectionnés`;
-
-  return (
-    <div className="space-y-1 relative" ref={ref}>
-      <label className="text-[8px] font-mono font-bold text-gray-400 uppercase tracking-tighter">{label}</label>
-      <button
-        type="button"
-        onClick={() => setOpen(v => !v)}
-        className={`w-full border-2 p-1 text-[10px] font-bold flex items-center justify-between gap-1 min-w-[120px] bg-white dark:bg-slate-800 dark:text-white transition-colors ${selected.length > 0 ? 'border-pixel-blue text-pixel-blue' : 'border-black dark:border-white'}`}
-      >
-        <span className="truncate max-w-[130px]">{buttonLabel}</span>
-        <ChevronDown className={`w-3 h-3 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 mt-1 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-30 min-w-[200px] max-h-[280px] overflow-y-auto">
-          <label className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black/20 dark:border-white/20 transition-colors">
-            <input type="checkbox" checked={selected.length === 0} onChange={() => onChange([])} className="accent-current" />
-            <span className="text-[10px] font-bold uppercase font-mono">TOUS</span>
-          </label>
-          {options.map(opt => (
-            <label key={opt.value} className="flex items-center gap-2 px-3 py-1.5 cursor-pointer hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors">
-              <input type="checkbox" checked={selected.includes(opt.value)} onChange={() => toggle(opt.value)} className="accent-current" />
-              <span className="text-[10px] font-bold uppercase font-mono truncate">{opt.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+import { useResearcherFilters } from '../hooks/useResearcherFilters';
+import { FilterPanel } from './researchers/FilterPanel';
+import { ListHeader } from './researchers/ListHeader';
+import { ResearcherTable } from './researchers/ResearcherTable';
+import { GroupModal } from './researchers/GroupModal';
 
 /**
  * Props pour le composant ResearcherList
@@ -90,655 +28,143 @@ interface ResearcherListProps {
   onSyncToSovisu?: () => void;
 }
 
-/** Clés autorisées pour le tri de la table */
-type SortKey = 'displayName' | 'status' | 'employer' | 'structureName' | 'team';
-
 /**
  * @component ResearcherList
  * @description Affiche la table interactive des personnels de recherche.
- * Incorpore la recherche textuelle, des filtres multicritères avancés, 
+ * Incorpore la recherche textuelle, des filtres multicritères avancés,
  * le tri multi-colonnes et des actions de masse (groupe, fusion).
  */
-export const ResearcherList: React.FC<ResearcherListProps> = ({ researchers, setResearchers, onSelectResearcher, onNewResearcher, loading = false, onManualSync, onSyncToSovisu }) => {
-  // 1. Enrichissement des données en temps réel (Priorité calcul > Grist vide)
-  const enrichedResearchers = useMemo(() => researchers, [researchers]);
+export const ResearcherList: React.FC<ResearcherListProps> = ({
+  researchers, setResearchers, onSelectResearcher, onNewResearcher,
+  loading = false, onManualSync, onSyncToSovisu,
+}) => {
+  const filters = useResearcherFilters(researchers);
 
-  // États de sélection et recherche
-  const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [searchTerm, setSearchTerm] = useState('');
-  
-  // États des filtres avancés
-  const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
-  const [filterEmployers, setFilterEmployers] = useState<string[]>([]);
-  const [filterLabs, setFilterLabs] = useState<string[]>([]);
-  const [filterGrades, setFilterGrades] = useState<string[]>([]);
-  const [filterContractTypes, setFilterContractTypes] = useState<string[]>([]);
-  const [filterLocations, setFilterLocations] = useState<string[]>([]);
-
-  // Synchronisation avec l'URL
-  const splitFilter = (v: string) => v ? v.split(',').filter(Boolean) : [];
-
-  const { setUrlState } = useUrlState(
-    { search: '', status: '', employer: '', lab: '', grade: '', contractType: '', location: '', mode: 'list' },
-    (newState) => {
-      if (newState.search !== undefined) setSearchTerm(newState.search || '');
-      if (newState.status !== undefined) setFilterStatuses(splitFilter(newState.status || ''));
-      if (newState.employer !== undefined) setFilterEmployers(splitFilter(newState.employer || ''));
-      if (newState.lab !== undefined) setFilterLabs(splitFilter(newState.lab || ''));
-      if (newState.grade !== undefined) setFilterGrades(splitFilter(newState.grade || ''));
-      if (newState.contractType !== undefined) setFilterContractTypes(splitFilter(newState.contractType || ''));
-      if (newState.location !== undefined) setFilterLocations(splitFilter(newState.location || ''));
-      if (newState.mode !== undefined) setViewMode((newState.mode as 'list' | 'dashboard') || 'list');
-    }
-  );
-
-  const updateSearch = (val: string) => { setSearchTerm(val); setUrlState({ search: val }); };
-  const updateStatuses = (vals: string[]) => { setFilterStatuses(vals); setUrlState({ status: vals.join(',') }); };
-  const updateEmployers = (vals: string[]) => { setFilterEmployers(vals); setUrlState({ employer: vals.join(',') }); };
-  const updateLabs = (vals: string[]) => { setFilterLabs(vals); setUrlState({ lab: vals.join(',') }); };
-  const updateGrades = (vals: string[]) => { setFilterGrades(vals); setUrlState({ grade: vals.join(',') }); };
-  const updateContractTypes = (vals: string[]) => { setFilterContractTypes(vals); setUrlState({ contractType: vals.join(',') }); };
-  const updateLocations = (vals: string[]) => { setFilterLocations(vals); setUrlState({ location: vals.join(',') }); };
-  const updateViewMode = (val: 'list' | 'dashboard') => { setViewMode(val); setUrlState({ mode: val }); };
-
-  // Configuration du tri
-  const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
-
-  // Gestion de la modale "Ajout au groupe"
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
-  const [groupInput, setGroupInput] = useState('');
-  
-  const [filterDateStart, setFilterDateStart] = useState<string>('');
-  const [filterDateEnd, setFilterDateEnd] = useState<string>('');
-  
-  // Filtres identifiants
-  const [idFilters, setIdFilters] = useState({
-    orcid: false,
-    hal: false,
-    idref: false,
-    scopus: false
-  });
-  
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 50; 
-
-  // Gestion de la synchronisation externe
   const [showSyncMenu, setShowSyncMenu] = useState(false);
-  const [activeSync, setActiveSync] = useState<{ isOpen: boolean, source: string } | null>(null);
+  const [activeSync, setActiveSync] = useState<{ isOpen: boolean; source: string } | null>(null);
 
-  /** Extraction dynamique des valeurs uniques pour remplir les sélecteurs de filtres */
-  const employers = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.employer).filter(Boolean))), [enrichedResearchers]);
-  const labs = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.affiliations.map(a => a.structureName)).filter(Boolean))), [enrichedResearchers]);
-  const grades = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.grade).filter(Boolean))).sort() as string[], [enrichedResearchers]);
-  const contractTypes = useMemo(() => Array.from(new Set(enrichedResearchers.map(r => r.employment.contractType).filter(Boolean))).sort() as string[], [enrichedResearchers]);
-  const locations = useMemo(() => [...new Set(enrichedResearchers.map(r => r.extra?.location || '').filter(Boolean))].sort(), [enrichedResearchers]);
-  const allGroups = useMemo(() => Array.from(new Set(enrichedResearchers.flatMap(r => r.groups))).sort(), [enrichedResearchers]);
+  const isAllSelected =
+    filters.sortedResearchers.length > 0 &&
+    filters.sortedResearchers.every(r => selectedIds.has(r.id));
 
-  /** 
-   * LOGIQUE DE FILTRAGE
-   * Utilise useMemo pour ne recalculer que lorsque les critères ou les données changent.
-   */
-  const filteredResearchers = useMemo(() => {
-    return enrichedResearchers.filter(r => {
-      const primaryLab = r.affiliations.find(a => a.isPrimary)?.structureName || '';
-
-      const matchesSearch = 
-        r.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        primaryLab.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.email.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(r.status);
-      const matchesEmployer = filterEmployers.length === 0 || filterEmployers.includes(r.employment.employer);
-      const matchesLab = filterLabs.length === 0 || r.affiliations.some(a => filterLabs.includes(a.structureName));
-      const matchesGrade = filterGrades.length === 0 || filterGrades.includes(r.employment.grade || '');
-      const matchesContractType = filterContractTypes.length === 0 || filterContractTypes.includes(r.employment.contractType || '');
-      const matchesLocation = filterLocations.length === 0 || filterLocations.includes(r.extra?.location || '');
-
-      const researcherArrival = r.employment.startDate;
-      const researcherDeparture = r.employment.endDate;
-
-      const matchesPeriod = 
-        (!filterDateStart || !researcherDeparture || researcherDeparture >= filterDateStart) &&
-        (!filterDateEnd || !researcherArrival || researcherArrival <= filterDateEnd);
-
-      const matchesIds = 
-        (!idFilters.orcid || !!r.identifiers.orcid) &&
-        (!idFilters.hal || !!r.identifiers.halId) &&
-        (!idFilters.idref || !!r.identifiers.idref) &&
-        (!idFilters.scopus || !!r.identifiers.scopusId);
-
-      return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesGrade && matchesContractType && matchesLocation && matchesPeriod && matchesIds;
-    });
-  }, [researchers, searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd, idFilters]);
-
-  // Réinitialiser la pagination lors d'un changement de filtre
-  React.useEffect(() => {
-    setCurrentPage(1);
-  }, [searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd]);
-
-  /** LOGIQUE DE TRI appliqué après le filtrage */
-  const sortedResearchers = useMemo(() => {
-    if (!sortConfig) return filteredResearchers;
-
-    return [...filteredResearchers].sort((a, b) => {
-      let aValue = '';
-      let bValue = '';
-
-      switch (sortConfig.key) {
-        case 'displayName':
-          aValue = a.displayName; bValue = b.displayName;
-          break;
-        case 'status':
-          aValue = a.status; bValue = b.status;
-          break;
-        case 'employer':
-          aValue = a.employment.employer; bValue = b.employment.employer;
-          break;
-        case 'structureName':
-          aValue = a.affiliations.find(aff => aff.isPrimary)?.structureName || '';
-          bValue = b.affiliations.find(aff => aff.isPrimary)?.structureName || '';
-          break;
-        case 'team':
-          aValue = a.affiliations.find(aff => aff.isPrimary)?.team || '';
-          bValue = b.affiliations.find(aff => aff.isPrimary)?.team || '';
-          break;
-        default:
-          return 0;
-      }
-
-      return sortConfig.direction === 'asc' 
-        ? aValue.localeCompare(bValue) 
-        : bValue.localeCompare(aValue);
-    });
-  }, [filteredResearchers, sortConfig]);
-
-  // Découpage pour pagination
-  const paginatedResearchers = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return sortedResearchers.slice(start, start + pageSize);
-  }, [sortedResearchers, currentPage]);
-
-  const totalPages = Math.ceil(sortedResearchers.length / pageSize);
-
-  /** Bascule le tri sur une colonne spécifique */
-  const handleSort = (key: SortKey) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  /** Gère la sélection/désélection individuelle d'un chercheur */
   const toggleSelect = (id: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) newSelected.delete(id);
-    else newSelected.add(id);
-    setSelectedIds(newSelected);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
-
-  /** État calculé pour la case "Tout sélectionner" */
-  const isAllSelected = sortedResearchers.length > 0 && sortedResearchers.every(r => selectedIds.has(r.id));
 
   const toggleSelectAll = () => {
     if (isAllSelected) {
-      const newSelected = new Set(selectedIds);
-      sortedResearchers.forEach(r => newSelected.delete(r.id));
-      setSelectedIds(newSelected);
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filters.sortedResearchers.forEach(r => next.delete(r.id));
+        return next;
+      });
     } else {
-      const newSelected = new Set(selectedIds);
-      sortedResearchers.forEach(r => newSelected.add(r.id));
-      setSelectedIds(newSelected);
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        filters.sortedResearchers.forEach(r => next.add(r.id));
+        return next;
+      });
     }
   };
 
-  /** Validation de l'ajout massif à un groupe */
-  const handleConfirmGroupAdd = () => {
-    const groupName = groupInput.trim();
-    if (groupName !== "") {
-      setResearchers(prev => prev.map(r => {
-        if (selectedIds.has(r.id) && !r.groups.includes(groupName)) {
-          return { ...r, groups: [...r.groups, groupName] };
-        }
-        return r;
-      }));
-      setSelectedIds(new Set());
-      setIsGroupModalOpen(false);
-    }
-  };
-
-  /** 
-   * Rendu du badge de statut coloré.
-   * @param {ResearcherStatus} status - Le statut à afficher.
-   */
-  const getStatusBadge = (status: ResearcherStatus) => {
-    switch (status) {
-      case ResearcherStatus.INTERNE:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-teal text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <CheckCircle className="w-3 h-3" /> Interne
-          </span>
-        );
-      case ResearcherStatus.DEPART:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-pink text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <XCircle className="w-3 h-3" /> Départ
-          </span>
-        );
-      case ResearcherStatus.PARTI:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-blue text-white text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <Clock className="w-3 h-3" /> Parti
-          </span>
-        );
-      case ResearcherStatus.EXTERNE:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black bg-pixel-yellow text-gray-900 text-[10px] font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-            <AlertCircle className="w-3 h-3" /> Externe
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 border-2 border-black dark:border-slate-600 bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] uppercase font-bold">
-            Aucun statut
-          </span>
-        );
-    }
-  };
-
-  /** Composant interne pour les en-têtes de colonnes triables */
-  const SortableHeader = ({ label, sortKey }: { label: string, sortKey: SortKey }) => {
-    const isActive = sortConfig?.key === sortKey;
-    return (
-      <th 
-        scope="col" 
-        className="px-6 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest cursor-pointer group hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors select-none border-b-2 border-black dark:border-white font-pixel"
-        onClick={() => handleSort(sortKey)}
-      >
-        <div className="flex items-center gap-1">
-          {label}
-          <span className={`transition-opacity ${isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            {isActive && sortConfig?.direction === 'desc' ? <ArrowDown className="w-3.5 h-3.5" /> : <ArrowUp className="w-3.5 h-3.5" />}
-          </span>
-        </div>
-      </th>
-    );
+  const handleConfirmGroupAdd = (groupName: string) => {
+    setResearchers(prev => prev.map(r =>
+      selectedIds.has(r.id) && !r.groups.includes(groupName)
+        ? { ...r, groups: [...r.groups, groupName] }
+        : r
+    ));
+    setSelectedIds(new Set());
+    setIsGroupModalOpen(false);
   };
 
   return (
     <div className="flex flex-col h-full bg-background dark:bg-slate-900 relative">
-      <SyncDialog 
-        isOpen={!!activeSync} 
+      <SyncDialog
+        isOpen={!!activeSync}
         onClose={() => setActiveSync(null)}
         title="Synchronisation"
         source={activeSync?.source || ''}
       />
 
-      {/* Modale d''ajout groupé */}
-      {isGroupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" role="dialog" aria-modal="true">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden border border-gray-200 dark:border-gray-700">
-            <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-900">
-              <h3 className="font-semibold text-gray-800 dark:text-white">Ajouter à un groupe</h3>
-              <button onClick={() => setIsGroupModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Nom du groupe</label>
-              <input
-                type="text"
-                value={groupInput}
-                onChange={(e) => setGroupInput(e.target.value)}
-                list="existing-groups"
-                className="block w-full rounded-md border-gray-300 dark:border-gray-600 p-2 border bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-primary"
-                placeholder="Sélectionnez ou créez..."
-                autoFocus
-              />
-              <datalist id="existing-groups">
-                {allGroups.map(g => <option key={g} value={g} />)}
-              </datalist>
-              <div className="text-sm text-blue-600 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-3 rounded">
-                 {selectedIds.size} chercheur(s) sélectionné(s)
-              </div>
-            </div>
-            <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex justify-end gap-3">
-              <button onClick={() => setIsGroupModalOpen(false)} className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md">Annuler</button>
-              <button onClick={handleConfirmGroupAdd} disabled={!groupInput.trim()} className="px-4 py-2 text-sm text-white bg-primary rounded-md hover:bg-blue-700 disabled:opacity-50">Valider</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <GroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        onConfirm={handleConfirmGroupAdd}
+        selectedCount={selectedIds.size}
+        allGroups={filters.allGroups}
+      />
 
-      {/* Header avec bouton synchro et export */}
-      <header className="bg-white dark:bg-slate-900 border-b-4 border-black dark:border-white px-8 py-6 flex flex-col md:flex-row md:items-center justify-between sticky top-0 z-10 transition-colors">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-4">
-            <h2 className="text-3xl font-pixel text-gray-900 dark:text-white tracking-tight">
-              PERSONNEL DE RECHERCHE
-            </h2>
-            <span className="text-[10px] font-bold border-2 border-black dark:border-white px-2 py-0.5 bg-pixel-pink text-white uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-               {sortedResearchers.length} {sortedResearchers.length > 1 ? 'RECORDS' : 'RECORD'}
-            </span>
-          </div>
-          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono font-bold uppercase tracking-widest">
-            {">"} GESTION ET VALIDATION DES IDENTITÉS
-          </p>
-        </div>
+      <ListHeader
+        count={filters.sortedResearchers.length}
+        viewMode={filters.viewMode}
+        onChangeViewMode={filters.updateViewMode}
+        loading={loading}
+        onManualSync={onManualSync}
+        onSyncToSovisu={onSyncToSovisu}
+        onNewResearcher={onNewResearcher}
+        showSyncMenu={showSyncMenu}
+        onToggleSyncMenu={() => setShowSyncMenu(v => !v)}
+        onCloseSyncMenu={() => setShowSyncMenu(false)}
+        sortedResearchers={filters.sortedResearchers}
+      />
 
-        <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-                  <div className="hidden sm:flex border-2 border-black dark:border-white p-1 bg-white dark:bg-slate-800 shadow-pixel-sm">
-                    <button 
-                      onClick={() => updateViewMode('list')}
-                      className={`p-1.5 transition-all ${viewMode === 'list' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => updateViewMode('dashboard')}
-                      className={`p-1.5 transition-all ${viewMode === 'dashboard' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </button>
-                  </div>
-
-          <div className="relative group/export">
-            <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-gray-700 dark:text-white bg-white dark:bg-slate-800 border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-              <FileDown className="w-4 h-4" /> Export
-            </button>
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 opacity-0 invisible group-hover/export:opacity-100 group-hover/export:visible transition-all">
-               <button 
-                onClick={() => ExportService.exportToCSV(sortedResearchers.map(r => ({ Nom: r.displayName, Email: r.email, Statut: r.status, Labo: r.affiliations[0]?.structureName || '' })), 'chercheurs_druid')}
-                className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors border-b-2 border-black dark:border-white"
-               >
-                 CSV
-               </button>
-               <button 
-                onClick={() => ExportService.exportToExcel(sortedResearchers.map(r => ({ Nom: r.displayName, Email: r.email, Statut: r.status, Labo: r.affiliations[0]?.structureName || '' })), 'chercheurs_druid')}
-                className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors border-b-2 border-black dark:border-white"
-               >
-                 Excel (.xlsx)
-               </button>
-               <button 
-                onClick={() => ExportService.exportResearchersPDF(sortedResearchers)}
-                className="w-full text-left px-4 py-2 text-[10px] font-bold uppercase hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
-               >
-                 PDF
-               </button>
-            </div>
-          </div>
-          <>
-            {hasRole('admin') && (
-              <button onClick={onNewResearcher} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-teal border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-                <Plus className="w-4 h-4" /> Nouveau
-              </button>
-            )}
-            <div className="relative">
-              <button onClick={() => setShowSyncMenu(!showSyncMenu)} className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-white bg-pixel-blue border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Synchroniser
-              </button>
-              {showSyncMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 border-2 border-black dark:border-white shadow-pixel z-20 overflow-hidden">
-                  <button
-                    onClick={() => { setShowSyncMenu(false); onManualSync?.(); }}
-                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-primary-dark dark:text-pixel-blue hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
-                  >
-                    <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    Forcer mise à jour Grist
-                  </button>
-                  <button
-                    disabled
-                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-gray-300 dark:text-gray-600 border-b-2 border-black dark:border-white flex items-center gap-2 cursor-not-allowed"
-                  >
-                    <Users className="w-4 h-4" />
-                    Synchroniser LDAP
-                  </button>
-                  <button
-                    onClick={() => { setShowSyncMenu(false); onSyncToSovisu?.(); }}
-                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Synchroniser avec SoVisu+
-                  </button>
-                </div>
-              )}
-            </div>
-          </>
-        </div>
-      </header>
-
-      {/* Table et Filtres */}
       <div className="p-8 flex-1 overflow-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-          
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="relative max-w-sm w-full">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                <input type="text" className="pl-10 pr-3 py-2 border-2 border-black dark:border-white focus:shadow-pixel transition-all w-full bg-white dark:bg-slate-800 text-[10px] font-mono uppercase" placeholder="RECHERCHER PERSONNEL..." value={searchTerm} onChange={(e) => updateSearch(e.target.value)} />
-              </div>
-              {selectedIds.size > 0 && (
-                <div className="flex items-center gap-2">
-                   <button onClick={() => setIsGroupModalOpen(true)} className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase text-secondary bg-purple-50 dark:bg-pixel-pink/10 border-2 border-black dark:border-white hover:bg-purple-100 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                     <Users className="w-3.5 h-3.5" /> Groupe
-                   </button>
-                   <button className="flex items-center gap-2 px-3 py-1.5 text-[10px] font-bold uppercase text-warning bg-orange-50 dark:bg-pixel-yellow/10 border-2 border-black dark:border-white hover:bg-orange-100 transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                     <Merge className="w-3.5 h-3.5" /> Fusion
-                   </button>
-                </div>
-              )}
-            </div>
+          <FilterPanel
+            searchTerm={filters.searchTerm}
+            onSearchChange={filters.updateSearch}
+            filterStatuses={filters.filterStatuses}
+            onStatusChange={filters.updateStatuses}
+            filterEmployers={filters.filterEmployers}
+            onEmployerChange={filters.updateEmployers}
+            filterLabs={filters.filterLabs}
+            onLabChange={filters.updateLabs}
+            filterGrades={filters.filterGrades}
+            onGradeChange={filters.updateGrades}
+            filterContractTypes={filters.filterContractTypes}
+            onContractTypeChange={filters.updateContractTypes}
+            filterLocations={filters.filterLocations}
+            onLocationChange={filters.updateLocations}
+            filterDateStart={filters.filterDateStart}
+            filterDateEnd={filters.filterDateEnd}
+            onDateStartChange={filters.setFilterDateStart}
+            onDateEndChange={filters.setFilterDateEnd}
+            idFilters={filters.idFilters}
+            onIdFiltersChange={filters.setIdFilters}
+            employers={filters.employers}
+            labs={filters.labs}
+            grades={filters.grades}
+            contractTypes={filters.contractTypes}
+            locations={filters.locations}
+            selectedCount={selectedIds.size}
+            onOpenGroupModal={() => setIsGroupModalOpen(true)}
+          />
 
-            <div className="flex flex-wrap gap-2 pt-2 border-t-2 border-black/10 dark:border-white/10">
-              <Filter className="w-4 h-4 text-gray-400 mt-1.5" />
-              
-                    <MultiSelectFilter
-                      label="STATUT"
-                      options={[
-                        { value: ResearcherStatus.INTERNE, label: 'INTERNE' },
-                        { value: ResearcherStatus.DEPART,  label: 'DÉPART' },
-                        { value: ResearcherStatus.PARTI,   label: 'PARTI' },
-                        { value: ResearcherStatus.EXTERNE, label: 'EXTERNE' },
-                      ]}
-                      selected={filterStatuses}
-                      onChange={updateStatuses}
-                    />
-
-                    <MultiSelectFilter
-                      label="EMPLOYEUR"
-                      options={employers.map(e => ({ value: e, label: e }))}
-                      selected={filterEmployers}
-                      onChange={updateEmployers}
-                    />
-
-                    <MultiSelectFilter
-                      label="LABO (AFFIL. PRINCIPALE)"
-                      options={labs.map(l => ({ value: l, label: l }))}
-                      selected={filterLabs}
-                      onChange={updateLabs}
-                    />
-
-                    <MultiSelectFilter
-                      label="GRADE / CORPS"
-                      options={grades.map(g => ({ value: g, label: g }))}
-                      selected={filterGrades}
-                      onChange={updateGrades}
-                    />
-
-                    <MultiSelectFilter
-                      label="TYPE D'EMPLOI"
-                      options={contractTypes.map(c => ({ value: c, label: c }))}
-                      selected={filterContractTypes}
-                      onChange={updateContractTypes}
-                    />
-
-                    <MultiSelectFilter
-                      label="LOCALISATION"
-                      options={locations.map(l => ({ value: l, label: l }))}
-                      selected={filterLocations}
-                      onChange={updateLocations}
-                    />
-              
-              <div className="flex flex-wrap gap-4 pt-4 border-t-2 border-black/10 dark:border-white/10 mt-2">
-                <div className="flex items-center gap-2">
-                   <span className="text-[8px] text-gray-400 font-bold uppercase mr-2">Identifiants :</span>
-                   <label className="flex items-center gap-1.5 cursor-pointer group">
-                      <input type="checkbox" checked={idFilters.orcid} onChange={e => setIdFilters({...idFilters, orcid: e.target.checked})} className="hidden" />
-                      <div className={`w-6 h-6 border-2 border-black dark:border-white flex items-center justify-center transition-colors ${idFilters.orcid ? 'bg-[#A6CE39]' : 'bg-white dark:bg-slate-800'}`}>
-                         {idFilters.orcid && <span className="text-[12px] font-bold text-white">iD</span>}
-                      </div>
-                      <span className="text-[9px] font-bold uppercase text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">ORCID</span>
-                   </label>
-                   <label className="flex items-center gap-1.5 cursor-pointer group ml-2">
-                      <input type="checkbox" checked={idFilters.hal} onChange={e => setIdFilters({...idFilters, hal: e.target.checked})} className="hidden" />
-                      <div className={`w-6 h-6 border-2 border-black dark:border-white flex items-center justify-center transition-colors ${idFilters.hal ? 'bg-[#212139]' : 'bg-white dark:bg-slate-800'}`}>
-                         {idFilters.hal && <span className="text-[10px] font-bold text-white">H</span>}
-                      </div>
-                      <span className="text-[9px] font-bold uppercase text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">HAL</span>
-                   </label>
-                   <label className="flex items-center gap-1.5 cursor-pointer group ml-2">
-                      <input type="checkbox" checked={idFilters.idref} onChange={e => setIdFilters({...idFilters, idref: e.target.checked})} className="hidden" />
-                      <div className={`w-6 h-6 border-2 border-black dark:border-white flex items-center justify-center transition-colors overflow-hidden bg-white `}>
-                         {idFilters.idref && <img src={`${import.meta.env.BASE_URL}idref.svg`} alt="IDRef" className="w-full h-full object-contain" />}
-                      </div>
-                      <span className="text-[9px] font-bold uppercase text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">IdRef</span>
-                   </label>
-                   <label className="flex items-center gap-1.5 cursor-pointer group ml-2">
-                      <input type="checkbox" checked={idFilters.scopus} onChange={e => setIdFilters({...idFilters, scopus: e.target.checked})} className="hidden" />
-                      <div className={`w-6 h-6 border-2 border-black dark:border-white flex items-center justify-center transition-colors ${idFilters.scopus ? 'bg-[#FF8200]' : 'bg-white dark:bg-slate-800'}`}>
-                         {idFilters.scopus && <span className="text-[12px] font-bold text-white">SC</span>}
-                      </div>
-                      <span className="text-[9px] font-bold uppercase text-gray-500 group-hover:text-black dark:group-hover:text-white transition-colors">SCOPUS</span>
-                   </label>
-                </div>
-
-                <div className="flex items-center gap-2 border-l-2 border-black dark:border-white pl-4">
-                  <span className="text-[8px] text-gray-400 font-bold uppercase">Dates :</span>
-                  <input 
-                    type="date" 
-                    value={filterDateStart} 
-                    onChange={(e) => setFilterDateStart(e.target.value)} 
-                    className="text-[10px] border-2 border-black dark:border-white p-0.5 bg-white dark:bg-slate-800 font-mono" 
-                  />
-                  <span className="text-[10px] text-gray-400 font-mono">{"->"}</span>
-                  <input 
-                    type="date" 
-                    value={filterDateEnd} 
-                    onChange={(e) => setFilterDateEnd(e.target.value)} 
-                    className="text-[10px] border-2 border-black dark:border-white p-0.5 bg-white dark:bg-slate-800 font-mono" 
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {viewMode === 'list' ? (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-slate-100 dark:bg-slate-950 font-pixel">
-                    <tr>
-                      <th className="px-6 py-3 w-10 border-b-2 border-black dark:border-white">
-                        <input type="checkbox" className="border-2 border-black dark:border-white text-primary-dark focus:ring-0" checked={isAllSelected} onChange={toggleSelectAll} />
-                      </th>
-                      <SortableHeader label="Identité" sortKey="displayName" />
-                      <SortableHeader label="Appartenance" sortKey="structureName" />
-                      <SortableHeader label="Employeur" sortKey="employer" />
-                      <th className="px-6 py-3 text-left text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest border-b-2 border-black dark:border-white font-pixel">IDs</th>
-                      <SortableHeader label="Statut" sortKey="status" />
-                      <th className="relative px-6 py-3 border-b-2 border-black dark:border-white"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-slate-900">
-                    {paginatedResearchers.map((person) => (
-                      <tr key={person.id} className={`hover:bg-pixel-pink/5 dark:hover:bg-pixel-pink/10 cursor-pointer border-b border-black/5 dark:border-white/5 group transition-colors ${selectedIds.has(person.id) ? 'bg-pixel-pink/10 dark:bg-pixel-pink/20' : ''}`} onClick={() => onSelectResearcher(person)}>
-                        <td className="px-6 py-4" onClick={(e) => { e.stopPropagation(); toggleSelect(person.id); }}>
-                          <input type="checkbox" className="border-2 border-black dark:border-white text-primary-dark focus:ring-0" checked={selectedIds.has(person.id)} readOnly />
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 border-2 border-black dark:border-white bg-pixel-pink text-white flex items-center justify-center font-pixel text-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                              {person.displayName.charAt(0)}
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-[12px] font-bold text-gray-900 dark:text-white uppercase tracking-tight">{person.displayName}</div>
-                              <div className="text-[8px] uppercase font-bold text-gray-400 font-mono tracking-tighter">{person.employment.internalTypology || 'NONE'}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-xs font-bold text-gray-600 dark:text-gray-300 uppercase font-mono">{person.affiliations.find(a => a.isPrimary)?.structureName || '-'}</td>
-                        <td className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">{person.employment.employer}</td>
-                        <td className="px-6 py-4">
-                           <ResearcherIcons identifiers={person.identifiers} />
-                        </td>
-                        <td className="px-6 py-4">{getStatusBadge(person.status)}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button className="text-gray-400 hover:text-black dark:hover:text-white transition-colors"><MoreHorizontal className="w-5 h-5" /></button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                {loading && (
-                  <div className="p-20 flex flex-col items-center justify-center gap-4">
-                    <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-                    <p className="text-gray-500 dark:text-gray-400">Synchronisation avec Grist en cours...</p>
-                  </div>
-                )}
-                {!loading && sortedResearchers.length === 0 && (
-                  <div className="p-20 text-center text-gray-500">Aucun chercheur trouvé.</div>
-                )}
-              </div>
-              
-              {/* Pagination Controls */}
-              {!loading && totalPages > 1 && (
-                <div className="px-6 py-5 flex items-center justify-between border-t-2 border-black dark:border-white bg-slate-50 dark:bg-slate-950 font-pixel">
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    PAGE <span className="font-bold text-black dark:text-white">{currentPage}</span> / <span className="font-bold text-black dark:text-white">{totalPages}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="px-4 py-1 border-2 border-black dark:border-white text-xs font-bold uppercase shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50 transition-all bg-white dark:bg-slate-800"
-                    >
-                      {"<"} PREV
-                    </button>
-                    <div className="flex items-center gap-2">
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                         let pageNum = i + 1;
-                         if (totalPages > 5 && currentPage > 3) {
-                           pageNum = currentPage - 2 + i;
-                           if (pageNum > totalPages - 4) pageNum = totalPages - 4 + i;
-                         }
-                         if (pageNum > totalPages) return null;
-                         
-                         return (
-                          <button 
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`w-8 h-8 border-2 border-black dark:border-white text-xs font-bold transition-all shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 ${currentPage === pageNum ? 'bg-pixel-blue text-white' : 'bg-white dark:bg-slate-800'}`}
-                          >
-                            {pageNum}
-                          </button>
-                         );
-                      })}
-                    </div>
-                    <button 
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-4 py-1 border-2 border-black dark:border-white text-xs font-bold uppercase shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 disabled:opacity-50 transition-all bg-white dark:bg-slate-800"
-                    >
-                      NEXT {">"}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+          {filters.viewMode === 'list' ? (
+            <ResearcherTable
+              researchers={filters.paginatedResearchers}
+              selectedIds={selectedIds}
+              isAllSelected={isAllSelected}
+              onToggleSelect={toggleSelect}
+              onToggleSelectAll={toggleSelectAll}
+              onSelectResearcher={onSelectResearcher}
+              loading={loading}
+              sortedCount={filters.sortedResearchers.length}
+              sortConfig={filters.sortConfig}
+              onSort={filters.handleSort}
+              currentPage={filters.currentPage}
+              totalPages={filters.totalPages}
+              onPageChange={filters.setCurrentPage}
+            />
           ) : (
-            <ResearcherDashboard researchers={sortedResearchers} />
+            <ResearcherDashboard researchers={filters.sortedResearchers} />
           )}
         </div>
       </div>

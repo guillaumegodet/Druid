@@ -9,6 +9,7 @@ import { StructureDetail } from './components/StructureDetail';
 import { GroupList } from './components/GroupList';
 import { ViewState, Researcher, Structure, ResearcherStatus } from './types';
 import { GristService } from './lib/gristService';
+import { csvEscape, isoDateOrEmpty } from './lib/csvUtils';
 import { useDruidData } from './hooks/useDruidData';
 import { useUrlState } from './hooks/useUrlState';
 import { MainLayout } from './components/layout/MainLayout';
@@ -144,12 +145,6 @@ function App() {
         'institution_identifier', 'institution_id_nomenclature', 'position',
         'employment_start_date', 'employment_end_date', 'hdr',
       ];
-      const csvEscape = (v: any) => {
-        const s = (v ?? '').toString();
-        return s.includes(',') || s.includes('"') || s.includes('\n')
-          ? `"${s.replace(/"/g, '""')}"` : s;
-      };
-      const isoDate = (v: any) => /^\d{4}-\d{2}-\d{2}$/.test(v ?? '') ? v : '';
 
       const structureByAcronym: Record<string, typeof structures[0]> = {};
       for (const s of structures) {
@@ -169,7 +164,7 @@ function App() {
           r.identifiers?.orcid || '', r.identifiers?.idref || '',
           r.identifiers?.scopusId || '', uai, uai ? 'UAI' : '',
           r.employment?.grade || '',
-          isoDate(r.employment?.startDate), isoDate(r.employment?.endDate),
+          isoDateOrEmpty(r.employment?.startDate), isoDateOrEmpty(r.employment?.endDate),
           r.extra?.hdr ? 'OUI' : '',
         ].map(csvEscape).join(','));
       }

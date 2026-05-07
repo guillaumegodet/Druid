@@ -9,8 +9,10 @@ const app = express();
 const PORT = process.env.DRUID_PORT || process.env.PORT || 3000;
 const AUTH_ENABLED = process.env.DRUID_AUTH_ENABLED === 'true';
 
-// Bypassing SSL verification for internal network proxying to Grist
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Bypass SSL verification only outside production (e.g. self-signed certs on internal Grist)
+if (process.env.NODE_ENV !== 'production') {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 // Keycloak / OAuth2 config — only used when AUTH_ENABLED=true
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || '';

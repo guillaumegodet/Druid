@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { Researcher, Structure } from '../types';
+import { csvEscape } from './csvUtils';
 
 /**
  * Service pour l'exportation des données dans différents formats.
@@ -17,10 +18,7 @@ export const ExportService = {
     const headers = Object.keys(data[0]);
     const csvContent = [
       headers.join(','),
-      ...data.map(item => headers.map(header => {
-        const val = item[header];
-        return typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : val;
-      }).join(','))
+      ...data.map(item => headers.map(header => csvEscape(item[header])).join(','))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

@@ -15,7 +15,7 @@ if (!LDAP_URL || !BIND_DN || !BIND_PW || !BASE_DN) {
   process.exit(1);
 }
 
-const client = ldap.createClient({ url: LDAP_URL, tlsOptions: { rejectUnauthorized: false } });
+const client = ldap.createClient({ url: LDAP_URL, tlsOptions: { rejectUnauthorized: process.env.NODE_ENV === 'production' } });
 
 async function syncAllStatuses() {
   return new Promise((resolve, reject) => {
