@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "gen:hierarchy": "python3 scripts/structures-viz/visualize_structures.py demo-data-structuresv2.csv public/structures-hierarchy.html"
   },
   "dependencies": {
     "jspdf": "^4.2.1",

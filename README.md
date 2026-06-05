@@ -22,6 +22,8 @@ To edit data, open the Grist document and modify the `Demo_data_researchers` or 
 - Browse and filter researchers and research structures loaded from Grist
 - Filter by status, employer, lab, grade, contract type, location, identifier presence
 - Edit researcher and structure records and write changes back to Grist
+- Manage structure memberships (inclusions / supervisions) in the **Appartenances** tab
+- Visualise the structure hierarchy (inclusions / participations) in the structures **Dataviz** tab
 - Export the directory as `people.csv` for [CRISalid](https://crisalid.org) / SoVisu+
 - Optional LDAP enrichment (status, civility, birth date, EPPN)
 - Optional Keycloak authentication
@@ -36,6 +38,12 @@ Import the provided CSV files into a new Grist document:
 
 - `demo-data-researchers.csv` → table for researchers
 - `demo-data-structuresv2.csv` → table for structures (CRISalid V2 schema, with `inclusions` / `participations` columns)
+
+> The structures **Dataviz** tab embeds a pre-generated hierarchy
+> (`public/structures-hierarchy.html`). It is a static asset built from
+> `demo-data-structuresv2.csv` (so it works on GitHub Pages without a server).
+> After changing the structures data, regenerate it with `npm run gen:hierarchy`
+> (requires `python3`, standard library only).
 
 Note the document ID from the URL (e.g. `bWVMq9SHJes7ngCuHsN9iD`) and the table names.
 

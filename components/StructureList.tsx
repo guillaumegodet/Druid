@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, FileDown, UploadCloud, ArrowRight, Filter, Merge, Trash2, ArrowUp, ArrowDown, Users, CheckCircle, Network } from 'lucide-react';
+import { Search, FileDown, UploadCloud, ArrowRight, Filter, Merge, Trash2, ArrowUp, ArrowDown, Users, CheckCircle, Network, List, RefreshCw } from 'lucide-react';
 import { Structure, StructureStatus, StructureLevel } from '../types';
 
 import { SyncDialog } from './SyncDialog';
@@ -26,6 +26,8 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'asc' | 'desc' } | null>(null);
   const [syncOpen, setSyncOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'dataviz'>('list');
+  const hierarchyUrl = `${import.meta.env.BASE_URL}structures-hierarchy.html`;
 
   // Filtres actifs
   const [filterLevel, setFilterLevel] = useState<string>('ALL');
@@ -225,7 +227,56 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
       </header>
 
       <div className="p-8 flex-1 overflow-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        {/* Onglets de bascule Liste / Dataviz */}
+        <div className="flex items-end gap-1.5 px-1">
+          {([
+            { key: 'list', label: 'Liste', Icon: List },
+            { key: 'dataviz', label: 'Dataviz', Icon: Network },
+          ] as const).map(({ key, label, Icon }) => {
+            const active = viewMode === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setViewMode(key)}
+                aria-pressed={active}
+                title={key === 'list' ? 'Vue liste (tableau)' : 'Vue dataviz (hiérarchie des structures)'}
+                className={`relative flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest font-pixel border-2 border-black dark:border-white border-b-0 rounded-t-md transition-all ${
+                  active
+                    ? 'bg-pixel-blue text-white shadow-[3px_-3px_0px_0px_rgba(0,0,0,0.2)] -mb-[2px] z-10'
+                    : 'bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 translate-y-[3px] hover:translate-y-[1px] hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {viewMode === 'dataviz' ? (
+          <div className="bg-white dark:bg-gray-800 rounded-lg rounded-tl-none shadow-sm border-2 border-black dark:border-white overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2 border-b-2 border-black dark:border-white bg-slate-50 dark:bg-slate-950">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+                {">"} HIÉRARCHIE DES STRUCTURES (inclusions / participations)
+              </span>
+              <a
+                href={hierarchyUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase border-2 border-black dark:border-white bg-white dark:bg-slate-800 shadow-pixel-sm hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all"
+                title="Ouvrir en plein écran"
+              >
+                <RefreshCw className="w-3 h-3" /> Plein écran
+              </a>
+            </div>
+            <iframe
+              src={hierarchyUrl}
+              title="Hiérarchie des structures"
+              className="w-full bg-white"
+              style={{ height: 'calc(100vh - 260px)', minHeight: '480px', border: 'none' }}
+            />
+          </div>
+        ) : (
+        <div className="bg-white dark:bg-gray-800 rounded-lg rounded-tl-none shadow-sm border border-gray-200 dark:border-gray-700">
            <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50 space-y-4">
             <div className="flex items-center justify-between">
               <div className="relative max-w-sm w-full">
@@ -390,6 +441,7 @@ export const StructureList: React.FC<StructureListProps> = ({ structures, onSele
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
