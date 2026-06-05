@@ -246,9 +246,10 @@ function App() {
       case ViewState.STRUCTURE_DETAIL:
         if (!selectedStructure) return null;
         return (
-          <StructureDetail 
-            structure={selectedStructure} 
-            onBack={() => setViewAndUrl(ViewState.STRUCTURES_LIST)} 
+          <StructureDetail
+            structure={selectedStructure}
+            allStructures={structures}
+            onBack={() => setViewAndUrl(ViewState.STRUCTURES_LIST)}
             onSave={handleSaveStructure}
             isSaving={loading}
           />

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Save, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Save, ExternalLink, RefreshCw } from 'lucide-react';
 import { Structure, StructureStatus } from '../types';
 
 // Sub-components
@@ -10,6 +10,8 @@ import { GovernanceTab } from './structures/GovernanceTab';
 
 interface StructureDetailProps {
   structure: Structure;
+  /** Toutes les structures (pour le sélecteur d'appartenances « de la base ») */
+  allStructures?: Structure[];
   onBack: () => void;
   onSave?: (updated: Structure) => void;
   isSaving?: boolean;
@@ -19,10 +21,10 @@ enum Tab {
   GENERAL = 'Identification',
   CLASSIFICATION = 'Missions & Classification',
   LIFECYCLE = 'Cycle de vie & Filiation',
-  GOVERNANCE = 'Gouvernance & Contact',
+  GOVERNANCE = 'Appartenances',
 }
 
-export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, onBack, onSave, isSaving = false }) => {
+export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, allStructures = [], onBack, onSave, isSaving = false }) => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.GENERAL);
   const [localStructure, setLocalStructure] = useState<Structure>({ ...structure });
 
@@ -58,7 +60,7 @@ export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, onB
       case Tab.LIFECYCLE:
         return <LifecycleTab structure={localStructure} onUpdateField={updateField} />;
       case Tab.GOVERNANCE:
-        return <GovernanceTab structure={localStructure} onUpdateField={updateField} />;
+        return <GovernanceTab structure={localStructure} allStructures={allStructures} onUpdateField={updateField} />;
       default:
         return null;
     }
@@ -106,15 +108,6 @@ export const StructureDetail: React.FC<StructureDetailProps> = ({ structure, onB
       </header>
 
       <div className="p-4 md:p-8 flex-1 overflow-auto">
-         {localStructure.status === StructureStatus.ACTIVE && !localStructure.director && (
-            <div className="mb-8 p-6 bg-pixel-pink/10 border-4 border-black dark:border-white shadow-pixel flex items-center gap-4 text-slate-900 dark:text-pixel-pink">
-               <AlertTriangle className="w-6 h-6 shrink-0" />
-               <p className="text-[12px] font-pixel uppercase tracking-widest">
-                 VALIDATION IMPOSSIBLE : UNE STRUCTURE À L'ÉTAT "ACTIVE" DOIT OBLIGATOIREMENT AVOIR UN RESPONSABLE IDENTIFIÉ.
-               </p>
-            </div>
-         )}
-
          <div className="flex gap-3 mb-6 overflow-x-auto pb-2">
            {Object.values(Tab).map((tab) => (
              <button

@@ -1,4 +1,4 @@
-import { Researcher, ResearcherStatus, Structure } from '../types';
+import { Researcher, ResearcherStatus, Structure, Membership } from '../types';
 import { ResearcherListSchema, StructureListSchema } from './schemas';
 
 const GRIST_DOC_ID = import.meta.env.VITE_GRIST_DOC_ID;
@@ -92,6 +92,117 @@ export const researcherToGristFields = (r: Researcher) => ({
   hdr: r.extra?.hdr ?? false,
   localisation: r.extra?.location || null,
 });
+
+// --- Helpers pour le format de la table Structures V2 (= structures.csv CRISalid) ---
+
+/** Décode un champ multi-libellé V2 `Valeur[fr]|Autre[en]` (langue préférée, sinon 1re). */
+const parseMultiLabel = (raw: any, preferLang = 'fr'): string => {
+  if (!raw || typeof raw !== 'string') return '';
+  const parts = raw.split('|').map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return '';
+  const parsed = parts.map((p) => {
+    const m = p.match(/^(.*?)\s*\[([a-zA-Z]{2})\]\s*$/);
+    return m ? { value: m[1].trim(), lang: m[2].toLowerCase() } : { value: p, lang: '' };
+  });
+  const preferred = parsed.find((p) => p.lang === preferLang);
+  return (preferred || parsed[0]).value;
+};
+
+/** Ré-encode une valeur simple au format multi-libellé V2 (`Valeur[fr]`). */
+const encodeMultiLabel = (value: any, lang = 'fr'): string => {
+  const v = value === null || value === undefined ? '' : String(value).trim();
+  return v ? `${v}[${lang}]` : '';
+};
+
+/**
+ * Dérive le niveau (StructureLevel) depuis generic_type + type V2 :
+ *   établissement (4) : generic_type=institution, ou type EPE/GE/EPST
+ *   intermédiaire (3) : UFR, POLE
+ *   équipe (1)        : ER
+ *   unité (2)         : UMR, UR, … (défaut)
+ */
+const deriveStructureLevel = (genericType: any, type?: any): string => {
+  const gt = String(genericType || '').toLowerCase();
+  const t = String(type || '').toUpperCase();
+  if (gt === 'institution' || t === 'EPE' || t === 'GE' || t === 'EPST') return '4';
+  if (t === 'ER') return '1';
+  if (t === 'UFR' || t === 'POLE') return '3';
+  return '2';
+};
+
+/** `YYYYMMDD` -> `YYYY-MM-DD` (vide si invalide). */
+const compactToIso = (d: any): string => {
+  const s = String(d || '');
+  return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : '';
+};
+/** `YYYY-MM-DD` -> `YYYYMMDD` (vide si invalide). */
+const isoToCompact = (d: any): string => {
+  const s = String(d || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.replace(/-/g, '') : '';
+};
+
+const SUPERVISION_CODES = new Set([
+  'main_supervision', 'associated_supervision', 'participating_supervision',
+]);
+
+/**
+ * Décode une colonne d'appartenance (`inclusions` ou `participations`) en Membership[].
+ * Grammaire : `<refType>-<ref>[<supervision>]?[<YYYYMMDD>-<YYYYMMDD>?]?`
+ * (un local_id nu sans préfixe est traité comme `local`).
+ */
+const parseMembershipList = (raw: any): Membership[] => {
+  if (!raw || typeof raw !== 'string') return [];
+  return raw.split('|').map((p) => p.trim()).filter(Boolean).map((entry): Membership => {
+    const refPart = entry.split('[')[0].trim();
+    const m = refPart.match(/^(local|uai|ror)-(.+)$/i);
+    const refType = (m ? m[1].toLowerCase() : 'local') as Membership['refType'];
+    const ref = m ? m[2] : refPart;
+    let supervision: Membership['supervision'] = '';
+    let startDate = '';
+    let endDate = '';
+    const brackets = entry.match(/\[([^\]]*)\]/g) || [];
+    for (const b of brackets) {
+      const inner = b.slice(1, -1).trim();
+      if (SUPERVISION_CODES.has(inner)) {
+        supervision = inner as Membership['supervision'];
+      } else {
+        const dm = inner.match(/^(\d{8})?-(\d{8})?$/);
+        if (dm) { startDate = compactToIso(dm[1] || ''); endDate = compactToIso(dm[2] || ''); }
+      }
+    }
+    return { refType, ref, supervision, startDate, endDate };
+  });
+};
+
+/** Ré-encode un Membership[] vers la colonne `inclusions`/`participations`. */
+const serializeMembershipList = (list: any): string => {
+  if (!Array.isArray(list)) return '';
+  return list.filter((m: any) => m && m.ref).map((m: any) => {
+    let out = `${m.refType || 'local'}-${String(m.ref).trim()}`;
+    if (m.supervision) out += `[${m.supervision}]`;
+    const start = isoToCompact(m.startDate) || '20000101';
+    const end = isoToCompact(m.endDate);
+    out += `[${start}-${end}]`;
+    return out;
+  }).join('|');
+};
+
+/** V2 `main_mission` (texte) -> StructureMission Druid. */
+const missionFromV2 = (raw: any): string => {
+  const v = String(raw || '').toLowerCase();
+  if (v.includes('scient')) return 'SERVICES_SCIENTIFIQUES';
+  if (v.includes('admin')) return 'SERVICES_ADMINISTRATIFS';
+  return 'RECHERCHE';
+};
+/** StructureMission Druid -> valeur texte V2. */
+const missionToV2 = (mission: any): string => {
+  switch (mission) {
+    case 'SERVICES_SCIENTIFIQUES': return 'scientific_services';
+    case 'SERVICES_ADMINISTRATIFS': return 'administrative_services';
+    case 'RECHERCHE': return 'research';
+    default: return '';
+  }
+};
 
 export const GristService = {
   getDocUpdatedAt: async (): Promise<string> => {
@@ -246,34 +357,56 @@ export const GristService = {
       const { records } = await resp.json();
       if (!records || records.length === 0) return [];
 
+      // Carte local_id -> acronyme (résolution des réfs `local-` en libellés lisibles).
+      const acronymByLid: Record<string, string> = {};
+      records.forEach((rec: any) => {
+        const lid = String(rec.fields['local_id'] || '');
+        if (lid) acronymByLid[lid] = parseMultiLabel(rec.fields['short_labels']) || lid;
+      });
+
       const structuresMapped = records.map((record: any) => {
         const f = record.fields;
-        const rawTutelles = f['tutelles'] || f['supervisors'] || '';
-        const supervisors = rawTutelles
-          .split('|')
-          .map((s: string) => s.trim())
-          .filter(Boolean);
+        const inclusions = parseMembershipList(f['inclusions']);
+        const participations = parseMembershipList(f['participations']);
+        const acronym = parseMultiLabel(f['short_labels']) || f['acronym'] || '';
+
+        // Tutelles (pour la colonne « Tutelles » de la liste) = participations à code
+        // de supervision, résolues en libellés ; les participations faibles (pôles) en sont exclues.
+        const resolve = (m: Membership): string => {
+          if (m.refType === 'uai') return `UAI ${m.ref}`;
+          if (m.refType === 'ror') return `ROR ${m.ref}`;
+          return acronymByLid[String(m.ref)] || m.ref;
+        };
+        const supervisors = participations.filter((m) => m.supervision).map(resolve);
+        const institutionCodes = participations
+          .filter((m) => m.supervision)
+          .map((m) => `${m.refType}-${m.ref}`)
+          .join('|');
 
         return {
           id: `S-${record.id}`,
-          trackingId: f['tracking_id'] || '',
-          level: String(f['level'] || '2'),
+          localId: String(f['local_id'] || ''),
+          trackingId: String(f['tracking_id'] || ''),
+          inclusions,
+          participations,
+          level: deriveStructureLevel(f['generic_type'], f['type']),
           nature: 'PUBLIC',
-          type: f['structure_type'] || f['type'] || '',
-          acronym: f['acronym'] || '',
-          officialName: f['name'] || f['officialName'] || '',
-          description: f['description'] || '',
+          type: f['type'] || f['structure_type'] || '',
+          acronym,
+          officialName: parseMultiLabel(f['long_labels']) || f['name'] || '',
+          description: parseMultiLabel(f['descriptions']) || f['description'] || '',
           cluster: '',
           code: String(f['nns'] || f['code'] || ''),
           rnsrId: String(f['nns'] || f['rnsr_id'] || ''),
           status: 'ACTIVE',
           historyLinks: [],
-          primaryMission: 'RECHERCHE',
+          primaryMission: missionFromV2(f['main_mission']),
+          secondaryMission: f['secondary_missions'] ? missionFromV2(f['secondary_missions']) : undefined,
           scientificDomains: [],
           ercFields: [],
           director: f['director'] || '',
           supervisors,
-          institutionCodes: rawTutelles,
+          institutionCodes,
           doctoralSchools: [],
           address: f['city_adress'] || f['address'] || '',
           zipCode: String(f['city_code'] || f['zip_code'] || ''),
@@ -281,11 +414,11 @@ export const GristService = {
           country: f['country'] || 'FR',
           website: f['web'] || f['website'] || '',
           rorId: String(f['ror'] || f['ror_id'] || ''),
-          halCollectionUrl: f['collection_hal'] || '',
+          halCollectionUrl: f['hal_collection'] || f['collection_hal'] || '',
           identifiers: {
             halStructIds: [],
             idrefId: '',
-            scopusId: String(f['scopus_id'] || ''),
+            scopusId: String(f['scopus'] || f['scopus_id'] || ''),
           },
           signature: f['signature'] || '',
         };
@@ -348,22 +481,22 @@ export const GristService = {
     const gristId = parseInt(structure.id.replace('S-', ''));
     if (isNaN(gristId)) throw new Error('ID invalide');
 
+    // Écriture vers la table Structures V2 (= structures.csv CRISalid). Les colonnes
+    // sans équivalent V2 (adresse, directeur, statut, niveau dérivé) ne sont pas réinjectées.
     const fields = {
-      tracking_id: structure.trackingId,
-      level: structure.level,
-      structure_type: structure.type,
-      acronym: structure.acronym,
-      name: structure.officialName,
-      description: structure.description,
+      type: structure.type,
+      short_labels: encodeMultiLabel(structure.acronym),
+      long_labels: encodeMultiLabel(structure.officialName),
+      descriptions: encodeMultiLabel(structure.description),
       nns: structure.rnsrId,
-      tutelles: structure.institutionCodes,
-      city_adress: structure.address,
-      city_code: structure.zipCode,
-      city_name: structure.city,
+      // Appartenances : ré-encodage des deux familles.
+      inclusions: serializeMembershipList(structure.inclusions),
+      participations: serializeMembershipList(structure.participations),
+      main_mission: missionToV2(structure.primaryMission),
       web: structure.website,
       ror: structure.rorId,
-      collection_hal: structure.halCollectionUrl,
-      scopus_id: structure.identifiers?.scopusId,
+      hal_collection: structure.halCollectionUrl,
+      scopus: structure.identifiers?.scopusId,
       signature: structure.signature,
     };
 

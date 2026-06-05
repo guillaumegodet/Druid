@@ -96,9 +96,20 @@ export const StructureIdentifiersSchema = z.object({
   scopusId: z.string().optional().nullable(),
 });
 
+const MembershipSchema = z.object({
+  refType: z.enum(['local', 'uai', 'ror']).default('local'),
+  ref: z.string(),
+  supervision: z.string().optional().nullable(),
+  startDate: z.string().optional().nullable(),
+  endDate: z.string().optional().nullable(),
+});
+
 export const StructureSchema = z.object({
   id: z.string(),
+  localId: z.string().optional().nullable(),
   trackingId: z.string().optional().nullable(),
+  inclusions: z.array(MembershipSchema).default([]),
+  participations: z.array(MembershipSchema).default([]),
   level: z.nativeEnum(StructureLevel).default(StructureLevel.ENTITE),
   nature: z.nativeEnum(StructureNature).default(StructureNature.PUBLIC),
   type: z.string().default(''),

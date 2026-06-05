@@ -35,7 +35,7 @@ To edit data, open the Grist document and modify the `Demo_data_researchers` or 
 Import the provided CSV files into a new Grist document:
 
 - `demo-data-researchers.csv` → table for researchers
-- `demo-data-structures.csv` → table for structures
+- `demo-data-structuresv2.csv` → table for structures (CRISalid V2 schema, with `inclusions` / `participations` columns)
 
 Note the document ID from the URL (e.g. `bWVMq9SHJes7ngCuHsN9iD`) and the table names.
 

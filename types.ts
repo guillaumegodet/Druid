@@ -148,10 +148,40 @@ export interface LineageLink {
   date: string;
 }
 
+/** Nature de la référence d'une appartenance */
+export type MembershipRefType =
+  | 'local'  // structure/institution de la base, réf `local-<local_id>`
+  | 'uai'    // institution externe par code UAI, réf `uai-<code>`
+  | 'ror';   // institution externe par identifiant ROR, réf `ror-<code>`
+
+/** Code de type de participation (tutelle) — uniquement pour les participations */
+export type SupervisionCode =
+  | 'main_supervision'           // tutelle principale
+  | 'associated_supervision'     // tutelle associée
+  | 'participating_supervision'; // participation simple
+
+/**
+ * Une appartenance d'une structure (inclusion OU participation). Le type
+ * (inclusion/participation) est porté par le tableau qui la contient
+ * (`Structure.inclusions` / `Structure.participations`), pas par l'objet.
+ * Sérialisée dans les colonnes `inclusions`/`participations` :
+ *   `<refType>-<ref>[<supervision>]?[<YYYYMMDD>-<YYYYMMDD>?]`
+ */
+export interface Membership {
+  refType: MembershipRefType;
+  ref: string;                        // local_id, code UAI ou ROR (sans préfixe)
+  supervision?: SupervisionCode | ''; // pertinent pour les participations établissement
+  startDate?: string;                 // YYYY-MM-DD
+  endDate?: string;                   // YYYY-MM-DD (vide = ouverte)
+}
+
 /** Objet principal représentant une Structure de recherche */
 export interface Structure {
   id: string;
+  localId?: string;         // Identifiant pivot (local_id) → réf `local-<local_id>`
   trackingId?: string;      // ID de suivi interne établissement
+  inclusions?: Membership[];     // Inclusions (appartenance forte) — colonne `inclusions`
+  participations?: Membership[]; // Participations (tutelles + appartenance faible) — colonne `participations`
   
   // Identification
   level: StructureLevel;
