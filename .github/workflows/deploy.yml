@@ -32,7 +32,7 @@ jobs:
           VITE_BASE: /Druid/
           VITE_GRIST_DOC_ID: ${{ vars.VITE_GRIST_DOC_ID || 'bWVMq9SHJes7ngCuHsN9iD' }}
           VITE_GRIST_RESEARCHERS_TABLE: ${{ vars.VITE_GRIST_RESEARCHERS_TABLE || 'Demo_data_researchers' }}
-          VITE_GRIST_STRUCTURES_TABLE: ${{ vars.VITE_GRIST_STRUCTURES_TABLE || 'demo-data-structuresv2' }}
+          VITE_GRIST_STRUCTURES_TABLE: ${{ vars.VITE_GRIST_STRUCTURES_TABLE || 'Demo_data_structuresv2' }}
           VITE_GRIST_BASE_URL: https://grist.numerique.gouv.fr/api
           VITE_GRIST_API_KEY: ''
         run: npm run build

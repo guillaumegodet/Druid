@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { List, LayoutGrid } from 'lucide-react';
 import { ResearcherDashboard } from './ResearcherDashboard';
 import { Researcher } from '../types';
 import { SyncDialog } from './SyncDialog';
@@ -107,8 +108,6 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({
 
       <ListHeader
         count={filters.sortedResearchers.length}
-        viewMode={filters.viewMode}
-        onChangeViewMode={filters.updateViewMode}
         loading={loading}
         onManualSync={onManualSync}
         onSyncToSovisu={onSyncToSovisu}
@@ -122,7 +121,31 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({
       />
 
       <div className="p-8 flex-1 overflow-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+        {/* Onglets de bascule Liste / Dataviz — l'onglet actif « collé » à la carte */}
+        <div className="flex items-end gap-1.5 px-1">
+          {([
+            { key: 'list', label: 'Liste', Icon: List },
+            { key: 'dashboard', label: 'Dataviz', Icon: LayoutGrid },
+          ] as const).map(({ key, label, Icon }) => {
+            const active = filters.viewMode === key;
+            return (
+              <button
+                key={key}
+                onClick={() => filters.updateViewMode(key)}
+                aria-pressed={active}
+                title={key === 'list' ? 'Vue liste (tableau)' : 'Vue dataviz (graphiques)'}
+                className={`relative flex items-center gap-2 px-5 py-2.5 text-[11px] font-bold uppercase tracking-widest font-pixel border-2 border-black dark:border-white border-b-0 rounded-t-md transition-all ${
+                  active
+                    ? 'bg-pixel-blue text-white shadow-[3px_-3px_0px_0px_rgba(0,0,0,0.2)] -mb-[2px] z-10'
+                    : 'bg-white dark:bg-slate-800 text-gray-500 dark:text-gray-400 translate-y-[3px] hover:translate-y-[1px] hover:text-black dark:hover:text-white hover:bg-gray-50 dark:hover:bg-slate-700'
+                }`}
+              >
+                <Icon className="w-4 h-4" /> {label}
+              </button>
+            );
+          })}
+        </div>
+        <div className="bg-white dark:bg-gray-800 rounded-lg rounded-tl-none shadow-sm border border-gray-200 dark:border-gray-700">
           <FilterPanel
             searchTerm={filters.searchTerm}
             onSearchChange={filters.updateSearch}

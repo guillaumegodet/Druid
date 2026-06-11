@@ -1,13 +1,11 @@
 import React from 'react';
-import { FileDown, Plus, RefreshCw, LayoutGrid, List, Users, Search, GitCompare } from 'lucide-react';
+import { FileDown, Plus, RefreshCw, Users, Search, GitCompare } from 'lucide-react';
 import { Researcher } from '../../types';
 import { ExportService } from '../../lib/exportService';
 import { hasRole } from '../../lib/auth';
 
 interface ListHeaderProps {
   count: number;
-  viewMode: 'list' | 'dashboard';
-  onChangeViewMode: (mode: 'list' | 'dashboard') => void;
   loading: boolean;
   onManualSync?: () => void;
   onSyncToSovisu?: () => void;
@@ -21,7 +19,7 @@ interface ListHeaderProps {
 }
 
 export const ListHeader: React.FC<ListHeaderProps> = ({
-  count, viewMode, onChangeViewMode, loading, onManualSync, onSyncToSovisu,
+  count, loading, onManualSync, onSyncToSovisu,
   onNewResearcher, showSyncMenu, onToggleSyncMenu, onCloseSyncMenu, sortedResearchers,
   onAlignIdref, idrefBusy = false,
 }) => {
@@ -49,21 +47,6 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
       </div>
 
       <div className="flex flex-wrap items-center gap-3 mt-4 md:mt-0">
-        <div className="hidden sm:flex border-2 border-black dark:border-white p-1 bg-white dark:bg-slate-800 shadow-pixel-sm">
-          <button
-            onClick={() => onChangeViewMode('list')}
-            className={`p-1.5 transition-all ${viewMode === 'list' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
-          >
-            <List className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => onChangeViewMode('dashboard')}
-            className={`p-1.5 transition-all ${viewMode === 'dashboard' ? 'bg-pixel-blue text-white' : 'hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500'}`}
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-        </div>
-
         <div className="relative group/export">
           <button className="flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase text-gray-700 dark:text-white bg-white dark:bg-slate-800 border-2 border-black dark:border-white shadow-pixel hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
             <FileDown className="w-4 h-4" /> Export
