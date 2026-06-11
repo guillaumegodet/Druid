@@ -1,22 +1,38 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Building2, Plus, Trash2, ExternalLink } from 'lucide-react';
-import { Affiliation } from '../../types';
+import { Affiliation, Structure } from '../../types';
 
 interface AffiliationsTableProps {
   affiliations: Affiliation[];
+  /** Toutes les structures, pour peupler le menu déroulant de sélection */
+  allStructures?: Structure[];
   onAdd: () => void;
   onRemove: (index: number) => void;
   onChange: (index: number, field: keyof Affiliation, value: any) => void;
   onNavigateToStructure?: (structureId: string) => void;
 }
 
-export const AffiliationsTable: React.FC<AffiliationsTableProps> = ({ 
-  affiliations, 
-  onAdd, 
-  onRemove, 
+export const AffiliationsTable: React.FC<AffiliationsTableProps> = ({
+  affiliations,
+  allStructures = [],
+  onAdd,
+  onRemove,
   onChange,
   onNavigateToStructure
 }) => {
+  // Structures proposées dans le menu déroulant, triées par acronyme.
+  const structureOptions = useMemo(
+    () => allStructures.filter((s) => s.acronym).sort((a, b) => (a.acronym || '').localeCompare(b.acronym || '')),
+    [allStructures]
+  );
+
+  // Sélection d'une structure : renseigne l'acronyme (structureName) + l'id (navigation).
+  const selectStructure = (idx: number, acronym: string) => {
+    const s = allStructures.find((st) => st.acronym === acronym);
+    onChange(idx, 'structureName', acronym);
+    onChange(idx, 'structureId', s ? s.id : undefined);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between pb-3 border-b-2 border-black/10 dark:border-white/10">
@@ -47,12 +63,21 @@ export const AffiliationsTable: React.FC<AffiliationsTableProps> = ({
                <tr key={idx} className={aff.isPrimary ? "bg-pixel-blue/5" : ""}>
                  <td className="p-2 border-r-2 border-black dark:border-white relative group">
                    <div className="flex items-center gap-1">
-                     <input 
-                      type="text" 
-                      value={aff.structureName} 
-                      onChange={(e) => onChange(idx, 'structureName', e.target.value)} 
-                      className="w-full text-[10px] border-2 border-black/20 focus:border-black dark:border-white/20 p-1 bg-white dark:bg-slate-800 dark:text-white uppercase font-bold" 
-                     />
+                     <select
+                      value={aff.structureName || ''}
+                      onChange={(e) => selectStructure(idx, e.target.value)}
+                      className="w-full text-[10px] border-2 border-black/20 focus:border-black dark:border-white/20 p-1 bg-white dark:bg-slate-800 dark:text-white uppercase font-bold"
+                     >
+                       <option value="">— Choisir une structure —</option>
+                       {aff.structureName && !structureOptions.some((s) => s.acronym === aff.structureName) && (
+                         <option value={aff.structureName}>{aff.structureName} (hors liste)</option>
+                       )}
+                       {structureOptions.map((s) => (
+                         <option key={s.id} value={s.acronym}>
+                           {s.acronym}{s.officialName ? ` — ${s.officialName}` : ''}
+                         </option>
+                       ))}
+                     </select>
                      {aff.structureId && onNavigateToStructure && (
                         <button 
                           onClick={() => onNavigateToStructure(aff.structureId!)} 

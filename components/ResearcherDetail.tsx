@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Save, RefreshCw, FileDown } from 'lucide-react';
-import { Researcher, ResearcherStatus, Affiliation } from '../types';
+import { Researcher, ResearcherStatus, Affiliation, Structure } from '../types';
 import { ExportService } from '../lib/exportService';
 import { GeneralTab } from './researchers/GeneralTab';
 
 interface ResearcherDetailProps {
   researcher: Researcher;
+  /** Toutes les structures, pour le menu déroulant de sélection dans les appartenances */
+  allStructures?: Structure[];
   onBack: () => void;
   onSave?: (updated: Researcher) => void;
   isSaving?: boolean;
   onNavigateToStructure?: (structureId: string) => void;
 }
 
-export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, onBack, onSave, isSaving, onNavigateToStructure }) => {
+export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, allStructures = [], onBack, onSave, isSaving, onNavigateToStructure }) => {
   const [localResearcher, setLocalResearcher] = useState<Researcher>({ ...researcher });
   const [affiliations, setAffiliations] = useState<Affiliation[]>(researcher.affiliations || []);
   const [groups] = useState<string[]>(researcher.groups || []);
@@ -95,6 +97,7 @@ export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, 
           <GeneralTab
             researcher={localResearcher}
             affiliations={affiliations}
+            allStructures={allStructures}
             onUpdateField={updateField}
             onAddAffiliation={handleAddAffiliation}
             onRemoveAffiliation={handleRemoveAffiliation}

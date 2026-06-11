@@ -270,9 +270,10 @@ function App() {
       case ViewState.RESEARCHER_DETAIL:
         if (!selectedResearcher) return null;
         return (
-          <ResearcherDetail 
-            researcher={selectedResearcher} 
-            onBack={() => setViewAndUrl(ViewState.RESEARCHERS_LIST)} 
+          <ResearcherDetail
+            researcher={selectedResearcher}
+            allStructures={structures}
+            onBack={() => setViewAndUrl(ViewState.RESEARCHERS_LIST)}
             onSave={handleSaveResearcher}
             isSaving={loading}
             onNavigateToStructure={(id) => {

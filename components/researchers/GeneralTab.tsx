@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Briefcase, Building2, Hash, Lock, ExternalLink } from 'lucide-react';
-import { Researcher, Affiliation } from '../../types';
+import { Researcher, Affiliation, Structure } from '../../types';
 import { AffiliationsTable } from './AffiliationsTable';
 import { GradeSelect } from './GradeSelect';
 
@@ -18,6 +18,7 @@ const LdapFieldLabel: React.FC<{ label: string; fromLdap?: boolean }> = ({ label
 interface GeneralTabProps {
   researcher: Researcher;
   affiliations: Affiliation[];
+  allStructures?: Structure[];
   onUpdateField: (field: string, value: any, subObject?: string) => void;
   onAddAffiliation: () => void;
   onRemoveAffiliation: (index: number) => void;
@@ -28,6 +29,7 @@ interface GeneralTabProps {
 export const GeneralTab: React.FC<GeneralTabProps> = ({
   researcher,
   affiliations,
+  allStructures = [],
   onUpdateField,
   onAddAffiliation,
   onRemoveAffiliation,
@@ -171,8 +173,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
          </div>
 
          {/* Section Appartenances */}
-         <AffiliationsTable 
+         <AffiliationsTable
             affiliations={affiliations}
+            allStructures={allStructures}
             onAdd={onAddAffiliation}
             onRemove={onRemoveAffiliation}
             onChange={onAffiliationChange}
