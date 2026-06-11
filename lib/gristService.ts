@@ -204,6 +204,69 @@ const missionToV2 = (mission: any): string => {
   }
 };
 
+// --- Alignement IdRef (démo statique) ---
+// Sur la démo GitHub Pages il n'y a pas de backend : le navigateur ne peut pas interroger
+// www.idref.fr (CORS) ni lancer le script de moissonnage. On livre donc un cache d'exemple
+// pré-calculé (public/idref_align_cache.json) et computeIdrefDiff le compare aux chercheurs
+// déjà chargés depuis Grist. L'écriture (« Appliquer ») est simulée côté client (cf. App.tsx),
+// la table Grist de démo étant en lecture seule.
+
+export interface IdrefCandidate {
+  ppn: string;
+  fullName: string;
+  job?: string;
+  birth?: string;
+  death?: string;
+  description?: string;
+  orcid?: string;
+  idhal?: string;
+  isni?: string;
+  gender?: string | null;
+}
+
+/** Proposition d'écriture d'un identifiant (cellule vide uniquement). */
+export interface IdrefFieldProposal {
+  field: 'IdRef' | 'ORCID' | 'IdHAL';
+  label: string;
+  after: string;
+}
+
+export interface IdrefDiff {
+  generatedAt: string;
+  mode: 'search' | 'verify';
+  stats: {
+    cacheTotal: number;
+    gristTotal: number;
+    aRenseigner: number;
+    ambigus: number;
+    aEnrichir: number;
+    aArbitrer: number;
+    conflits: number;
+    nonTrouves: number;
+  };
+  /** search : IdRef vide + un seul candidat → on propose IdRef (+ ORCID/IdHAL si vides) */
+  aRenseigner: { id: string; uid: string; displayName: string; labo: string; candidate: IdrefCandidate; proposals: IdrefFieldProposal[] }[];
+  /** search : plusieurs candidats → l'utilisateur arbitre */
+  ambigus: { id: string; uid: string; displayName: string; labo: string; candidates: IdrefCandidate[] }[];
+  /** verify : notice relue, nom concordant, ORCID/IdHAL absents → enrichissement sûr */
+  aEnrichir: { id: string; uid: string; displayName: string; labo: string; ppn: string; candidate: IdrefCandidate; proposals: IdrefFieldProposal[] }[];
+  /** verify : écart de nom → atelier d'arbitrage (confirmer = même personne / détacher = mauvais IdRef).
+   *  suspect = aucun token de nom partagé. */
+  aArbitrer: { id: string; uid: string; displayName: string; ppn: string; notice: IdrefCandidate; grist: { orcid: string; idhal: string }; proposals: IdrefFieldProposal[]; suspect: boolean }[];
+  /** info : valeur ≠ notice (nom concordant), ou notice illisible — jamais écrasé */
+  conflits: { id: string; uid: string; displayName: string; reason: string; detail: string; ppn?: string }[];
+  /** info : aucun candidat trouvé */
+  nonTrouves: { uid: string; displayName: string }[];
+}
+
+/** Une écriture concrète décidée par l'UI : champs → valeur. */
+export interface IdrefUpdate {
+  id: string;
+  uid: string;
+  displayName: string;
+  fields: Record<string, string>; // ex. { IdRef: '028736036', ORCID: '0000-...' }
+}
+
 export const GristService = {
   getDocUpdatedAt: async (): Promise<string> => {
     try {
@@ -512,5 +575,129 @@ export const GristService = {
       }
     );
     if (!resp.ok) throw new Error('Erreur UPDATE Structure Grist');
+  },
+
+  /**
+   * LECTURE SEULE : compare le cache d'alignement IdRef (public/idref_align_cache.json,
+   * clé = tracking_id) aux chercheurs déjà chargés. Classe selon le mode :
+   *  - search : aRenseigner (1 candidat, IdRef vide), ambigus (>1), nonTrouves (0)
+   *  - verify : aEnrichir (ORCID/IdHAL absents), aArbitrer (écart de nom), conflits
+   * Ne propose JAMAIS d'écraser une valeur non vide. Sur la démo statique le cache est fictif.
+   */
+  computeIdrefDiff: async (mode: 'search' | 'verify', researchers: Researcher[]): Promise<IdrefDiff> => {
+    let cache: Record<string, any> = {};
+    try {
+      const r = await fetch(`${import.meta.env.BASE_URL}idref_align_cache.json`, { cache: 'no-store' });
+      if (r.ok) cache = await r.json();
+    } catch (e) { console.warn('Cache IdRef introuvable'); }
+
+    const byUid: Record<string, Researcher> = {};
+    for (const r of researchers) { if (r.uid && !byUid[r.uid]) byUid[r.uid] = r; }
+
+    // Comparaisons tolérantes (PPN sur chiffres+X, ORCID/IdHAL sur trim/lower).
+    const ppnDigits = (v: any) => String(v || '').match(/([0-9]{6,}[0-9X])/i)?.[1]?.toUpperCase() || '';
+    const norm = (v: any) => String(v || '').trim().toLowerCase();
+
+    const aRenseigner: IdrefDiff['aRenseigner'] = [];
+    const ambigus: IdrefDiff['ambigus'] = [];
+    const aEnrichir: IdrefDiff['aEnrichir'] = [];
+    const aArbitrer: IdrefDiff['aArbitrer'] = [];
+    const conflits: IdrefDiff['conflits'] = [];
+    const nonTrouves: IdrefDiff['nonTrouves'] = [];
+
+    // Deux noms partagent-ils au moins un token significatif (≥3 lettres) ? Sinon « suspect ».
+    const deburr = (s: string) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const tokens = (s: string) => new Set(deburr(s).split(/[^a-z]+/).filter((t) => t.length >= 3));
+    const shareToken = (a: string, b: string) => {
+      const ta = tokens(a); const tb = tokens(b);
+      for (const t of ta) if (tb.has(t)) return true;
+      return false;
+    };
+
+    // Cellules courantes du chercheur (modèle), mappées vers les libellés IdRef/ORCID/IdHAL.
+    const cellsOf = (r: Researcher) => ({
+      IdRef: r.identifiers?.idref || '',
+      ORCID: r.identifiers?.orcid || '',
+      IdHAL: r.identifiers?.halId || '',
+    });
+
+    // proposals (cellules vides) + conflits (cellules ≠) pour un candidat donné.
+    const compare = (cells: { IdRef: string; ORCID: string; IdHAL: string }, cand: IdrefCandidate) => {
+      const proposals: IdrefFieldProposal[] = [];
+      const localConflicts: string[] = [];
+      const fields: { field: IdrefFieldProposal['field']; label: string; cand: string; cur: string; eq: boolean }[] = [
+        { field: 'IdRef', label: 'IdRef', cand: cand.ppn || '', cur: cells.IdRef, eq: ppnDigits(cand.ppn) === ppnDigits(cells.IdRef) },
+        { field: 'ORCID', label: 'ORCID', cand: cand.orcid || '', cur: cells.ORCID, eq: norm(cand.orcid) === norm(cells.ORCID) },
+        { field: 'IdHAL', label: 'IdHAL', cand: cand.idhal || '', cur: cells.IdHAL, eq: norm(cand.idhal) === norm(cells.IdHAL) },
+      ];
+      for (const x of fields) {
+        if (!x.cand) continue;
+        if (!String(x.cur).trim()) proposals.push({ field: x.field, label: x.label, after: x.cand });
+        else if (!x.eq) localConflicts.push(`${x.label}: Grist «${x.cur}» ≠ notice «${x.cand}»`);
+      }
+      return { proposals, localConflicts };
+    };
+
+    let cacheTotal = 0;
+    for (const [uid, raw] of Object.entries(cache)) {
+      const entry: any = raw;
+      if (entry.mode !== mode) continue;       // vue par mode (le cache contient les deux)
+      cacheTotal++;
+      const rec = byUid[uid];
+      if (!rec) continue;                       // entrée de cache sans fiche (uid disparu)
+      const cells = cellsOf(rec);
+      const id = rec.id;
+      const displayName = entry.queryName || rec.displayName;
+      const labo = rec.affiliations?.[0]?.structureName || '';
+
+      if (mode === 'search') {
+        if (entry.status === 'not_found' || !entry.candidates?.length) {
+          nonTrouves.push({ uid, displayName });
+        } else if (entry.status === 'ambiguous' || entry.candidates.length > 1) {
+          ambigus.push({ id, uid, displayName, labo, candidates: entry.candidates });
+        } else {
+          const cand: IdrefCandidate = entry.candidates[0];
+          const { proposals, localConflicts } = compare(cells, cand);
+          if (proposals.length) aRenseigner.push({ id, uid, displayName, labo, candidate: cand, proposals });
+          if (localConflicts.length) conflits.push({ id, uid, displayName, reason: 'Divergence identifiant', detail: localConflicts.join(' · '), ppn: cand.ppn });
+        }
+      } else { // verify
+        const cand: IdrefCandidate | undefined = entry.candidates?.[0];
+        const ppn = entry.ppn || cand?.ppn || '';
+        if (entry.status === 'notice_error' || !cand) {
+          conflits.push({ id, uid, displayName, reason: 'Notice illisible', detail: `PPN ${ppn || '?'} : notice IdRef inaccessible`, ppn });
+          continue;
+        }
+        const { proposals, localConflicts } = compare(cells, cand);
+        // Pas de colonne IdRef_nom_valide dans la table de démo → jamais « déjà confirmé ».
+        if (entry.nameMismatch) {
+          aArbitrer.push({
+            id, uid, displayName, ppn, notice: cand,
+            grist: { orcid: cells.ORCID, idhal: cells.IdHAL },
+            proposals,
+            suspect: !shareToken(displayName, cand.fullName),
+          });
+        } else {
+          if (proposals.length) aEnrichir.push({ id, uid, displayName, labo, ppn, candidate: cand, proposals });
+          if (localConflicts.length) conflits.push({ id, uid, displayName, reason: 'Divergence identifiant', detail: localConflicts.join(' · '), ppn });
+        }
+      }
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      mode,
+      stats: {
+        cacheTotal,
+        gristTotal: researchers.length,
+        aRenseigner: aRenseigner.length,
+        ambigus: ambigus.length,
+        aEnrichir: aEnrichir.length,
+        aArbitrer: aArbitrer.length,
+        conflits: conflits.length,
+        nonTrouves: nonTrouves.length,
+      },
+      aRenseigner, ambigus, aEnrichir, aArbitrer, conflits, nonTrouves,
+    };
   },
 };

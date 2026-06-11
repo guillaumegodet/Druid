@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileDown, Plus, RefreshCw, LayoutGrid, List, Users } from 'lucide-react';
+import { FileDown, Plus, RefreshCw, LayoutGrid, List, Users, Search, GitCompare } from 'lucide-react';
 import { Researcher } from '../../types';
 import { ExportService } from '../../lib/exportService';
 import { hasRole } from '../../lib/auth';
@@ -16,11 +16,14 @@ interface ListHeaderProps {
   onToggleSyncMenu: () => void;
   onCloseSyncMenu: () => void;
   sortedResearchers: Researcher[];
+  onAlignIdref?: (mode: 'search' | 'verify') => void;
+  idrefBusy?: boolean;
 }
 
 export const ListHeader: React.FC<ListHeaderProps> = ({
   count, viewMode, onChangeViewMode, loading, onManualSync, onSyncToSovisu,
   onNewResearcher, showSyncMenu, onToggleSyncMenu, onCloseSyncMenu, sortedResearchers,
+  onAlignIdref, idrefBusy = false,
 }) => {
   const exportRows = sortedResearchers.map(r => ({
     Nom: r.displayName,
@@ -113,6 +116,26 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
                 <Users className="w-4 h-4" />
                 Synchroniser LDAP
               </button>
+              {onAlignIdref && (
+                <>
+                  <button
+                    onClick={() => { onCloseSyncMenu(); onAlignIdref('search'); }}
+                    disabled={idrefBusy}
+                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-pixel-blue dark:text-pixel-cyan hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Search className={`w-4 h-4 ${idrefBusy ? 'animate-pulse' : ''}`} />
+                    Aligner IdRef — chercher manquants
+                  </button>
+                  <button
+                    onClick={() => { onCloseSyncMenu(); onAlignIdref('verify'); }}
+                    disabled={idrefBusy}
+                    className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-pixel-blue dark:text-pixel-cyan hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <GitCompare className={`w-4 h-4 ${idrefBusy ? 'animate-pulse' : ''}`} />
+                    Vérifier IdRef (notices)
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => { onCloseSyncMenu(); onSyncToSovisu?.(); }}
                 className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-orange-600 dark:text-orange-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black flex items-center gap-2 transition-colors"

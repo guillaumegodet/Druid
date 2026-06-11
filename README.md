@@ -24,6 +24,7 @@ To edit data, open the Grist document and modify the `Demo_data_researchers` or 
 - Edit researcher and structure records and write changes back to Grist
 - Manage structure memberships (inclusions / supervisions) in the **Appartenances** tab
 - Visualise the structure hierarchy (inclusions / participations) in the structures **Dataviz** tab
+- Align researchers with their [IdRef](https://www.idref.fr) authority record via **Synchroniser → Aligner / Vérifier IdRef** (propose → review → apply: fill missing IdRefs, arbitrate ambiguous matches and name discrepancies, enrich ORCID / IdHAL)
 - Export the directory as `people.csv` for [CRISalid](https://crisalid.org) / SoVisu+
 - Optional LDAP enrichment (status, civility, birth date, EPPN)
 - Optional Keycloak authentication
@@ -43,6 +44,14 @@ Import the provided CSV files into a new Grist document:
 > (`public/structures-hierarchy.html`). It is a static asset built from
 > `demo-data-structuresv2.csv` (so it works on GitHub Pages without a server).
 > After changing the structures data, regenerate it with `npm run gen:hierarchy`
+
+> **IdRef alignment** uses a pre-computed sample cache
+> (`public/idref_align_cache.json`) instead of live calls to idref.fr, which the
+> browser cannot reach from GitHub Pages (CORS). On the static demo the **Apply**
+> button updates the view in memory only (the demo Grist document is read-only).
+> The "enrich IdHAL" example in *Vérifier IdRef* assumes the latest
+> `demo-data-researchers.csv` (one record has a blank `idhals`) — re-import it if
+> your Grist table predates this.
 > (requires `python3`, standard library only).
 
 Note the document ID from the URL (e.g. `bWVMq9SHJes7ngCuHsN9iD`) and the table names.

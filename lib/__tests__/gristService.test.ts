@@ -381,3 +381,72 @@ describe('GristService.fetchResearchers', () => {
     expect(researchers).toEqual(cached);
   });
 });
+
+// ─── GristService.computeIdrefDiff (démo statique) ────────────────────────────
+
+describe('GristService.computeIdrefDiff', () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  // Construit un Researcher minimal pour les seuls champs lus par computeIdrefDiff.
+  const mkResearcher = (uid: string, ids: { idref?: string; orcid?: string; halId?: string } = {}) => ({
+    id: `G-${uid}`,
+    uid,
+    displayName: uid.toUpperCase(),
+    affiliations: [{ structureName: 'LIRA' }],
+    identifiers: { idref: ids.idref || '', orcid: ids.orcid || '', halId: ids.halId || '' },
+  }) as any;
+
+  const stubCache = (cache: Record<string, any>) =>
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => cache }));
+
+  it('search: classe en à renseigner / ambigus / non trouvés', async () => {
+    stubCache({
+      a: { mode: 'search', status: 'found', candidates: [{ ppn: '111', fullName: 'A', idhal: 'a-hal' }] },
+      b: { mode: 'search', status: 'ambiguous', candidates: [{ ppn: '222', fullName: 'B1' }, { ppn: '333', fullName: 'B2' }] },
+      c: { mode: 'search', status: 'not_found', candidates: [] },
+    });
+    const diff = await GristService.computeIdrefDiff('search', [
+      mkResearcher('a', { orcid: '0000-1' }),   // idref vide → proposera IdRef + IdHAL
+      mkResearcher('b'),
+      mkResearcher('c'),
+    ]);
+    expect(diff.stats.aRenseigner).toBe(1);
+    expect(diff.aRenseigner[0].proposals.map((p) => p.field).sort()).toEqual(['IdHAL', 'IdRef']);
+    expect(diff.stats.ambigus).toBe(1);
+    expect(diff.stats.nonTrouves).toBe(1);
+  });
+
+  it('search: ne propose jamais d\'écraser un IdRef déjà renseigné', async () => {
+    stubCache({ a: { mode: 'search', status: 'found', candidates: [{ ppn: '028736036', fullName: 'A' }] } });
+    const diff = await GristService.computeIdrefDiff('search', [mkResearcher('a', { idref: '145778521' })]);
+    expect(diff.stats.aRenseigner).toBe(0); // IdRef déjà présent, aucune proposition
+    expect(diff.stats.conflits).toBe(1);    // 028736036 ≠ 145778521 → conflit informatif
+  });
+
+  it('verify: écart de nom sans token partagé → arbitrage suspect', async () => {
+    stubCache({
+      x: { mode: 'verify', status: 'ok', ppn: '444', nameMismatch: true, candidates: [{ ppn: '444', fullName: 'Audrey Valtot' }] },
+    });
+    const diff = await GristService.computeIdrefDiff('verify', [mkResearcher('x', { idref: '444', orcid: '0000-9' })]);
+    // displayName 'X' ≠ 'Audrey Valtot' (aucun token commun) → suspect
+    expect(diff.stats.aArbitrer).toBe(1);
+    expect(diff.aArbitrer[0].suspect).toBe(true);
+  });
+
+  it('verify: enrichit une cellule IdHAL vide depuis la notice', async () => {
+    stubCache({
+      y: { mode: 'verify', status: 'ok', ppn: '555', nameMismatch: false, candidates: [{ ppn: '555', fullName: 'Y', idhal: 'y-hal', orcid: '0000-2' }] },
+    });
+    const diff = await GristService.computeIdrefDiff('verify', [mkResearcher('y', { idref: '555', orcid: '0000-2' })]);
+    expect(diff.stats.aEnrichir).toBe(1);
+    expect(diff.aEnrichir[0].proposals.map((p) => p.field)).toEqual(['IdHAL']);
+  });
+
+  it('filtre les entrées de cache par mode', async () => {
+    stubCache({
+      a: { mode: 'verify', status: 'ok', ppn: '1', candidates: [{ ppn: '1', fullName: 'A' }] },
+    });
+    const diff = await GristService.computeIdrefDiff('search', [mkResearcher('a', { idref: '1' })]);
+    expect(diff.stats.cacheTotal).toBe(0); // l'entrée verify est ignorée en mode search
+  });
+});

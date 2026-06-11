@@ -26,6 +26,10 @@ interface ResearcherListProps {
   onManualSync?: () => void;
   /** Callback pour télécharger people.csv */
   onSyncToSovisu?: () => void;
+  /** Callback d'alignement IdRef (démo statique) */
+  onAlignIdref?: (mode: 'search' | 'verify') => void;
+  /** Alignement IdRef en cours */
+  idrefBusy?: boolean;
 }
 
 /**
@@ -36,7 +40,7 @@ interface ResearcherListProps {
  */
 export const ResearcherList: React.FC<ResearcherListProps> = ({
   researchers, setResearchers, onSelectResearcher, onNewResearcher,
-  loading = false, onManualSync, onSyncToSovisu,
+  loading = false, onManualSync, onSyncToSovisu, onAlignIdref, idrefBusy = false,
 }) => {
   const filters = useResearcherFilters(researchers);
 
@@ -113,6 +117,8 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({
         onToggleSyncMenu={() => setShowSyncMenu(v => !v)}
         onCloseSyncMenu={() => setShowSyncMenu(false)}
         sortedResearchers={filters.sortedResearchers}
+        onAlignIdref={onAlignIdref}
+        idrefBusy={idrefBusy}
       />
 
       <div className="p-8 flex-1 overflow-auto">

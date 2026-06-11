@@ -1,0 +1,113 @@
+{
+  "nguyen-l": {
+    "mode": "search",
+    "status": "found",
+    "queryName": "NGUYEN Lan",
+    "candidates": [
+      {
+        "ppn": "178954127",
+        "fullName": "Lan Nguyen",
+        "job": "Chercheuse en réseaux",
+        "birth": "1986",
+        "orcid": "",
+        "idhal": "lan-nguyen",
+        "description": "Spécialiste des réseaux pair-à-pair, laboratoire LIRA (données de démonstration)."
+      }
+    ]
+  },
+  "petit-l": {
+    "mode": "search",
+    "status": "ambiguous",
+    "queryName": "PETIT Léa",
+    "candidates": [
+      {
+        "ppn": "092551238",
+        "fullName": "Léa Petit",
+        "job": "Biologiste",
+        "birth": "1990",
+        "idhal": "lea-petit",
+        "description": "Génétique des populations, institut BIOS (démo)."
+      },
+      {
+        "ppn": "145778521",
+        "fullName": "Léa Petit",
+        "job": "Historienne de l'art",
+        "birth": "1974",
+        "description": "Homonyme — histoire de l'art (démo), a priori à écarter."
+      }
+    ]
+  },
+  "olivier-s": {
+    "mode": "search",
+    "status": "not_found",
+    "queryName": "OLIVIER Sami",
+    "candidates": []
+  },
+  "chevalier-a": {
+    "mode": "verify",
+    "status": "ok",
+    "ppn": "300000001",
+    "nameMismatch": true,
+    "candidates": [
+      {
+        "ppn": "300000001",
+        "fullName": "Anne Chevalier-Dubois",
+        "job": "Mathématicienne",
+        "birth": "1979",
+        "orcid": "0000-0001-3000-0001",
+        "idhal": "anne-chevalier",
+        "description": "Géométrie différentielle, laboratoire LMD (démo). Publie sous son nom d'épouse Chevalier-Dubois."
+      }
+    ]
+  },
+  "henry-m": {
+    "mode": "verify",
+    "status": "ok",
+    "ppn": "300000002",
+    "nameMismatch": true,
+    "candidates": [
+      {
+        "ppn": "300000002",
+        "fullName": "Marguerite Henriot",
+        "job": "Physicienne",
+        "birth": "1948",
+        "death": "2009",
+        "description": "Physique des particules (démo) — vraisemblablement une autre personne : l'IdRef semble erroné."
+      }
+    ]
+  },
+  "garnier-s": {
+    "mode": "verify",
+    "status": "ok",
+    "ppn": "200000001",
+    "nameMismatch": false,
+    "candidates": [
+      {
+        "ppn": "200000001",
+        "fullName": "Sophie Garnier",
+        "job": "Généticienne",
+        "birth": "1982",
+        "orcid": "0000-0002-7777-1234",
+        "idhal": "sophie-garnier",
+        "description": "Génomique fonctionnelle, institut BIOS (démo)."
+      }
+    ]
+  },
+  "morel-j": {
+    "mode": "verify",
+    "status": "ok",
+    "ppn": "200000004",
+    "nameMismatch": false,
+    "candidates": [
+      {
+        "ppn": "200000004",
+        "fullName": "Julien Morel",
+        "job": "Bio-informaticien",
+        "birth": "1988",
+        "orcid": "0000-0001-2000-0004",
+        "idhal": "julien-morel",
+        "description": "Bio-informatique, institut BIOS (démo)."
+      }
+    ]
+  }
+}

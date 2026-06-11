@@ -8,7 +8,8 @@ import { StructureList } from './components/StructureList';
 import { StructureDetail } from './components/StructureDetail';
 import { GroupList } from './components/GroupList';
 import { ViewState, Researcher, Structure, ResearcherStatus } from './types';
-import { GristService } from './lib/gristService';
+import { GristService, IdrefDiff, IdrefUpdate } from './lib/gristService';
+import { IdrefSyncReview } from './components/researchers/IdrefSyncReview';
 import { csvEscape, isoDateOrEmpty } from './lib/csvUtils';
 import { useDruidData } from './hooks/useDruidData';
 import { useUrlState } from './hooks/useUrlState';
@@ -57,6 +58,10 @@ function App() {
 
   const [selectedResearcher, setSelectedResearcher] = useState<Researcher | null>(null);
   const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
+
+  // Alignement IdRef (démo statique : cache d'exemple, pas de backend).
+  const [idrefDiff, setIdrefDiff] = useState<IdrefDiff | null>(null);
+  const [idrefBusy, setIdrefBusy] = useState(false);
 
   // Synchronisation avec l'URL
   const { setUrlState } = useUrlState(
@@ -135,6 +140,41 @@ function App() {
     };
     setSelectedResearcher(newResearcher);
     setCurrentView(ViewState.RESEARCHER_DETAIL);
+  };
+
+  // Alignement IdRef : sur la démo Pages, computeIdrefDiff lit le cache statique pré-calculé
+  // (public/idref_align_cache.json) et le compare aux chercheurs déjà chargés. Aucun appel réseau
+  // vers idref.fr (bloqué par CORS), aucun backend.
+  const handleAlignIdref = async (mode: 'search' | 'verify') => {
+    try {
+      setError('');
+      setIdrefBusy(true);
+      const diff = await GristService.computeIdrefDiff(mode, researchers);
+      setIdrefDiff(diff);
+    } catch (err: any) {
+      setError(err.message || "Erreur lors de l'alignement IdRef");
+    } finally {
+      setIdrefBusy(false);
+    }
+  };
+
+  // Démo : « Appliquer » met à jour la liste en mémoire (la table Grist de démo est en lecture
+  // seule). Mappe les libellés IdRef/ORCID/IdHAL vers le modèle ; IdRef='' = détachement.
+  const handleApplyIdref = (updates: IdrefUpdate[]) => {
+    const byId = new Map(updates.map((u) => [u.id, u.fields]));
+    setResearchers((prev) =>
+      prev.map((r) => {
+        const fields = byId.get(r.id);
+        if (!fields) return r;
+        const identifiers = { ...r.identifiers };
+        if ('IdRef' in fields) identifiers.idref = fields.IdRef;
+        if ('ORCID' in fields) identifiers.orcid = fields.ORCID;
+        if ('IdHAL' in fields) identifiers.halId = fields.IdHAL;
+        return { ...r, identifiers };
+      })
+    );
+    setIdrefDiff(null);
+    window.alert(`Démo : ${updates.length} fiche(s) mise(s) à jour localement (non persisté dans Grist).`);
   };
 
   const handleSyncToSovisu = () => {
@@ -223,6 +263,8 @@ function App() {
             loading={loading}
             onManualSync={() => refreshData()}
             onSyncToSovisu={handleSyncToSovisu}
+            onAlignIdref={handleAlignIdref}
+            idrefBusy={idrefBusy}
           />
         );
       case ViewState.RESEARCHER_DETAIL:
@@ -284,6 +326,14 @@ function App() {
       }
     >
       {renderContent()}
+      {idrefDiff && (
+        <IdrefSyncReview
+          diff={idrefDiff}
+          applying={false}
+          onApply={handleApplyIdref}
+          onClose={() => setIdrefDiff(null)}
+        />
+      )}
     </MainLayout>
   );
 }
