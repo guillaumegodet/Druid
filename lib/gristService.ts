@@ -354,7 +354,9 @@ export const GristService = {
           birthDate,
           status,
           employment: {
-            employer: f['institution_id_nomenclature'] || f['institution_identifier'] || '',
+            // L'employeur = institution_identifier (ex. DEMO-UNIV). institution_id_nomenclature
+            // est la nomenclature de l'identifiant (ex. « local »), pas l'employeur.
+            employer: f['institution_identifier'] || '',
             institutionId: f['institution_identifier'] || '',
             contractType: f['membership_type'] || '',
             grade: f['position'] || '',
