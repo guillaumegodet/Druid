@@ -1,12 +1,15 @@
 import React from 'react';
-import { CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, XCircle, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { ResearcherStatus } from '../../types';
+import { ValidationInfo, isValidationStale } from '../../lib/validation';
 
 interface StatusBadgeProps {
   status: ResearcherStatus;
+  /** Couche de validation manuelle — ajoute un décorateur « validé / périmé ». */
+  validation?: ValidationInfo;
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+const StatusChip: React.FC<{ status: ResearcherStatus }> = ({ status }) => {
   switch (status) {
     case ResearcherStatus.INTERNE:
       return (
@@ -40,3 +43,43 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
       );
   }
 };
+
+/**
+ * Décorateur « validé » : axe orthogonal au statut. Indique que la ligne a été
+ * fiabilisée manuellement (✓ + source/date en tooltip), ou « périmé » si la
+ * validation est trop ancienne (à revérifier).
+ */
+export const ValidationMark: React.FC<{ validation?: ValidationInfo; now?: Date }> = ({
+  validation,
+  now = new Date(),
+}) => {
+  if (!validation?.validated) return null;
+  const stale = isValidationStale(validation, now);
+  const tooltip = [
+    validation.validationSource ? `Source : ${validation.validationSource}` : null,
+    validation.validationDate ? `Validé le ${validation.validationDate}` : null,
+    validation.validationScope.length ? `Porte sur : ${validation.validationScope.join(' + ')}` : null,
+    validation.validatedBy ? `Par ${validation.validatedBy}` : null,
+    stale ? '⚠ Validation périmée — à revérifier' : null,
+  ].filter(Boolean).join('\n');
+  return (
+    <span
+      title={tooltip}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 border-2 text-[9px] font-bold uppercase tracking-wider ${
+        stale
+          ? 'border-orange-500 bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300'
+          : 'border-emerald-600 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
+      }`}
+    >
+      {stale ? <ShieldAlert className="w-3 h-3" /> : <ShieldCheck className="w-3 h-3" />}
+      {stale ? 'Périmé' : 'Validé'}
+    </span>
+  );
+};
+
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, validation }) => (
+  <span className="inline-flex items-center gap-1.5">
+    <StatusChip status={status} />
+    <ValidationMark validation={validation} />
+  </span>
+);

@@ -3,6 +3,7 @@ import { ArrowLeft, Save, RefreshCw, FileDown } from 'lucide-react';
 import { Researcher, ResearcherStatus, Affiliation, Structure } from '../types';
 import { ExportService } from '../lib/exportService';
 import { GeneralTab } from './researchers/GeneralTab';
+import { ValidationMark } from './researchers/StatusBadge';
 
 interface ResearcherDetailProps {
   researcher: Researcher;
@@ -71,6 +72,7 @@ export const ResearcherDetail: React.FC<ResearcherDetailProps> = ({ researcher, 
               {researcher.status === ResearcherStatus.DEPART && <span className="bg-pixel-pink text-white text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Départ</span>}
               {researcher.status === ResearcherStatus.PARTI && <span className="bg-pixel-blue text-white text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Parti</span>}
               {researcher.status === ResearcherStatus.EXTERNE && <span className="bg-pixel-yellow text-gray-900 text-[10px] px-2 py-0.5 border-2 border-black dark:border-white font-mono font-bold uppercase">Externe</span>}
+              <ValidationMark validation={researcher.validation} />
             </h2>
             <p className="text-[10px] text-gray-400 font-mono font-bold uppercase mt-1">UID: {researcher.uid || 'NON-RENSEIGNÉ'} • Last Sync: {researcher.lastSync}</p>
           </div>

@@ -1,5 +1,6 @@
 import { Researcher, ResearcherStatus, Structure, Membership } from '../types';
 import { ResearcherListSchema, StructureListSchema } from './schemas';
+import { parseValidation, resolveStatus, validationToGristFields } from './validation';
 
 const GRIST_DOC_ID = import.meta.env.VITE_GRIST_DOC_ID;
 const GRIST_API_KEY = import.meta.env.VITE_GRIST_API_KEY;
@@ -91,6 +92,8 @@ export const researcherToGristFields = (r: Researcher) => ({
   scopus: r.identifiers.scopusId || null,
   hdr: r.extra?.hdr ?? false,
   localisation: r.extra?.location || null,
+  // Couche de fiabilisation (statut/rattachement validés) — colonnes dédiées.
+  ...validationToGristFields(r.validation, toGristDate),
 });
 
 // --- Helpers pour le format de la table Structures V2 (= structures.csv CRISalid) ---
@@ -320,7 +323,11 @@ export const GristService = {
           ? (typeof ldapEntry === 'string' ? ldapEntry : ldapEntry.etat)
           : undefined;
 
-        const status = mapStatus(f['status'] || '', ldapState);
+        // Statut dérivé (LDAP/Grist) puis surcouche de validation manuelle
+        // (prime sur le dérivé, ne masque pas l'enregistrement de la source).
+        const derivedStatus = mapStatus(f['status'] || '', ldapState);
+        const validation = parseValidation(f, fromGristDate);
+        const status = resolveStatus(validation, derivedStatus);
 
         // Civility: LDAP takes priority, then Grist gender field
         const ldapCivility = ldapEntry?.civilite || '';
@@ -382,6 +389,7 @@ export const GristService = {
             hdr: f['hdr'] === true || f['hdr'] === 'OUI',
             location: f['localisation'] || '',
           },
+          validation,
           ldapFields: [],
           lastSync: new Date().toISOString().split('T')[0],
         };

@@ -74,7 +74,7 @@ export const ResearcherTable: React.FC<ResearcherTableProps> = ({
               </td>
               <td className="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">{person.employment.employer}</td>
               <td className="px-6 py-4"><ResearcherIcons identifiers={person.identifiers} /></td>
-              <td className="px-6 py-4"><StatusBadge status={person.status} /></td>
+              <td className="px-6 py-4"><StatusBadge status={person.status} validation={person.validation} /></td>
               <td className="px-6 py-4 text-right">
                 <button className="text-gray-400 hover:text-black dark:hover:text-white transition-colors">
                   <MoreHorizontal className="w-5 h-5" />

@@ -58,6 +58,15 @@ export const ResearcherIdentifiersSchema = z.object({
   researcherId: z.string().optional().nullable(),
 });
 
+export const ValidationInfoSchema = z.object({
+  validated: z.boolean().default(false),
+  validatedStatus: z.nativeEnum(ResearcherStatus).optional(),
+  validationDate: z.string().optional(),
+  validationSource: z.string().optional(),
+  validationScope: z.array(z.enum(['statut', 'rattachement'])).default([]),
+  validatedBy: z.string().optional(),
+});
+
 export const ResearcherSchema = z.object({
   id: z.string(),
   uid: z.string().optional().nullable(),
@@ -79,6 +88,7 @@ export const ResearcherSchema = z.object({
   extra: ResearcherExtraSchema.optional(),
   ldapFields: z.array(z.string()).optional().default([]),
   lastSync: z.string().optional().nullable(),
+  validation: ValidationInfoSchema.optional(),
 });
 
 // --- Structure Schemas ---

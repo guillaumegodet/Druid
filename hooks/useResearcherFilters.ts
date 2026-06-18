@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Researcher } from '../types';
+import { isValidationStale } from '../lib/validation';
 import { useUrlState } from './useUrlState';
 
 export type SortKey = 'displayName' | 'status' | 'employer' | 'structureName' | 'team';
@@ -26,6 +27,7 @@ export function useResearcherFilters(researchers: Researcher[]) {
   const [viewMode, setViewMode] = useState<'list' | 'dashboard'>('list');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatuses, setFilterStatuses] = useState<string[]>([]);
+  const [filterValidation, setFilterValidation] = useState<string[]>([]);
   const [filterEmployers, setFilterEmployers] = useState<string[]>([]);
   const [filterLabs, setFilterLabs] = useState<string[]>([]);
   const [filterGrades, setFilterGrades] = useState<string[]>([]);
@@ -40,10 +42,11 @@ export function useResearcherFilters(researchers: Researcher[]) {
   const splitFilter = (v: string) => (v ? v.split(',').filter(Boolean) : []);
 
   const { setUrlState } = useUrlState(
-    { search: '', status: '', employer: '', lab: '', grade: '', contractType: '', location: '', mode: 'list' },
+    { search: '', status: '', validation: '', employer: '', lab: '', grade: '', contractType: '', location: '', mode: 'list' },
     (newState) => {
       if (newState.search !== undefined) setSearchTerm(newState.search || '');
       if (newState.status !== undefined) setFilterStatuses(splitFilter(newState.status || ''));
+      if (newState.validation !== undefined) setFilterValidation(splitFilter(newState.validation || ''));
       if (newState.employer !== undefined) setFilterEmployers(splitFilter(newState.employer || ''));
       if (newState.lab !== undefined) setFilterLabs(splitFilter(newState.lab || ''));
       if (newState.grade !== undefined) setFilterGrades(splitFilter(newState.grade || ''));
@@ -78,6 +81,20 @@ export function useResearcherFilters(researchers: Researcher[]) {
     [researchers]
   );
 
+  const now = useMemo(() => new Date(), []);
+
+  const matchesValidationFilter = (r: Researcher): boolean => {
+    if (filterValidation.length === 0) return true;
+    const validated = !!r.validation?.validated;
+    const stale = validated && isValidationStale(r.validation, now);
+    return filterValidation.some((f) => {
+      if (f === 'validated') return validated && !stale;
+      if (f === 'not_validated') return !validated;
+      if (f === 'stale') return stale;
+      return false;
+    });
+  };
+
   const filteredResearchers = useMemo(() => researchers.filter(r => {
     const primaryLab = r.affiliations.find(a => a.isPrimary)?.structureName || '';
     const matchesSearch =
@@ -85,6 +102,7 @@ export function useResearcherFilters(researchers: Researcher[]) {
       primaryLab.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatuses.length === 0 || filterStatuses.includes(r.status);
+    const matchesValidation = matchesValidationFilter(r);
     const matchesEmployer = filterEmployers.length === 0 || filterEmployers.includes(r.employment.employer);
     const matchesLab = filterLabs.length === 0 || r.affiliations.some(a => filterLabs.includes(a.structureName));
     const matchesGrade = filterGrades.length === 0 || filterGrades.includes(r.employment.grade || '');
@@ -98,9 +116,9 @@ export function useResearcherFilters(researchers: Researcher[]) {
       (!idFilters.hal || !!r.identifiers.halId) &&
       (!idFilters.idref || !!r.identifiers.idref) &&
       (!idFilters.scopus || !!r.identifiers.scopusId);
-    return matchesSearch && matchesStatus && matchesEmployer && matchesLab && matchesGrade &&
+    return matchesSearch && matchesStatus && matchesValidation && matchesEmployer && matchesLab && matchesGrade &&
       matchesContractType && matchesLocation && matchesPeriod && matchesIds;
-  }), [researchers, searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd, idFilters]);
+  }), [researchers, searchTerm, filterStatuses, filterValidation, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd, idFilters, now]);
 
   const sortedResearchers = useMemo(() => {
     if (!sortConfig) return filteredResearchers;
@@ -134,7 +152,7 @@ export function useResearcherFilters(researchers: Researcher[]) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterStatuses, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd]);
+  }, [searchTerm, filterStatuses, filterValidation, filterEmployers, filterLabs, filterGrades, filterContractTypes, filterLocations, filterDateStart, filterDateEnd]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig(prev => ({
@@ -145,6 +163,7 @@ export function useResearcherFilters(researchers: Researcher[]) {
 
   const updateSearch = (val: string) => { setSearchTerm(val); setUrlState({ search: val }); };
   const updateStatuses = (vals: string[]) => { setFilterStatuses(vals); setUrlState({ status: vals.join(',') }); };
+  const updateValidation = (vals: string[]) => { setFilterValidation(vals); setUrlState({ validation: vals.join(',') }); };
   const updateEmployers = (vals: string[]) => { setFilterEmployers(vals); setUrlState({ employer: vals.join(',') }); };
   const updateLabs = (vals: string[]) => { setFilterLabs(vals); setUrlState({ lab: vals.join(',') }); };
   const updateGrades = (vals: string[]) => { setFilterGrades(vals); setUrlState({ grade: vals.join(',') }); };
@@ -156,6 +175,7 @@ export function useResearcherFilters(researchers: Researcher[]) {
     viewMode, updateViewMode,
     searchTerm, updateSearch,
     filterStatuses, updateStatuses,
+    filterValidation, updateValidation,
     filterEmployers, updateEmployers,
     filterLabs, updateLabs,
     filterGrades, updateGrades,

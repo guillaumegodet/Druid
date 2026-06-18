@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileDown, Plus, RefreshCw, Users, Search, GitCompare } from 'lucide-react';
+import { FileDown, Plus, RefreshCw, Users, Search, GitCompare, ShieldCheck } from 'lucide-react';
 import { Researcher } from '../../types';
 import { ExportService } from '../../lib/exportService';
 import { hasRole } from '../../lib/auth';
@@ -16,12 +16,13 @@ interface ListHeaderProps {
   sortedResearchers: Researcher[];
   onAlignIdref?: (mode: 'search' | 'verify') => void;
   idrefBusy?: boolean;
+  onImportValidation?: () => void;
 }
 
 export const ListHeader: React.FC<ListHeaderProps> = ({
   count, loading, onManualSync, onSyncToSovisu,
   onNewResearcher, showSyncMenu, onToggleSyncMenu, onCloseSyncMenu, sortedResearchers,
-  onAlignIdref, idrefBusy = false,
+  onAlignIdref, idrefBusy = false, onImportValidation,
 }) => {
   const exportRows = sortedResearchers.map(r => ({
     Nom: r.displayName,
@@ -118,6 +119,15 @@ export const ListHeader: React.FC<ListHeaderProps> = ({
                     Vérifier IdRef (notices)
                   </button>
                 </>
+              )}
+              {onImportValidation && (
+                <button
+                  onClick={() => { onCloseSyncMenu(); onImportValidation(); }}
+                  className="w-full text-left px-4 py-3 text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 hover:bg-black hover:text-white dark:hover:bg-white dark:hover:text-black border-b-2 border-black dark:border-white flex items-center gap-2 transition-colors"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Importer une liste fiabilisée
+                </button>
               )}
               <button
                 onClick={() => { onCloseSyncMenu(); onSyncToSovisu?.(); }}

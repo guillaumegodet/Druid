@@ -10,6 +10,8 @@ import { GroupList } from './components/GroupList';
 import { ViewState, Researcher, Structure, ResearcherStatus } from './types';
 import { GristService, IdrefDiff, IdrefUpdate } from './lib/gristService';
 import { IdrefSyncReview } from './components/researchers/IdrefSyncReview';
+import { ValidationImportReview } from './components/researchers/ValidationImportReview';
+import { ValidationDiff, ValidationScope, ValidationInfo } from './lib/validation';
 import { csvEscape, isoDateOrEmpty } from './lib/csvUtils';
 import { useDruidData } from './hooks/useDruidData';
 import { useUrlState } from './hooks/useUrlState';
@@ -62,6 +64,9 @@ function App() {
   // Alignement IdRef (démo statique : cache d'exemple, pas de backend).
   const [idrefDiff, setIdrefDiff] = useState<IdrefDiff | null>(null);
   const [idrefBusy, setIdrefBusy] = useState(false);
+
+  // Import d'une liste fiabilisée (validation manuelle du statut/rattachement).
+  const [validationImportOpen, setValidationImportOpen] = useState(false);
 
   // Synchronisation avec l'URL
   const { setUrlState } = useUrlState(
@@ -177,6 +182,33 @@ function App() {
     window.alert(`Démo : ${updates.length} fiche(s) mise(s) à jour localement (non persisté dans Grist).`);
   };
 
+  // Démo : la table Grist est en lecture seule → on applique les validations en
+  // mémoire (comme l'alignement IdRef). En prod (Druid Nantes), l'équivalent
+  // persiste les colonnes de validation via GristService.updateResearcher.
+  const handleApplyValidation = (
+    diff: ValidationDiff,
+    opts: { source: string; date: string; scope: ValidationScope[] },
+  ) => {
+    const byId = new Map(diff.matched.map((m) => [m.researcherId, m]));
+    setResearchers((prev) =>
+      prev.map((r) => {
+        const m = byId.get(r.id);
+        if (!m) return r;
+        const coversStatus = opts.scope.includes('statut');
+        const validation: ValidationInfo = {
+          validated: true,
+          validatedStatus: coversStatus ? m.newStatus : r.validation?.validatedStatus,
+          validationDate: opts.date,
+          validationSource: opts.source,
+          validationScope: opts.scope,
+        };
+        return { ...r, validation, status: coversStatus ? m.newStatus : r.status };
+      }),
+    );
+    setValidationImportOpen(false);
+    window.alert(`Démo : ${diff.matched.length} fiche(s) validée(s) localement (non persisté dans Grist).`);
+  };
+
   const handleSyncToSovisu = () => {
     try {
       const CSV_HEADERS = [
@@ -265,6 +297,7 @@ function App() {
             onSyncToSovisu={handleSyncToSovisu}
             onAlignIdref={handleAlignIdref}
             idrefBusy={idrefBusy}
+            onImportValidation={() => setValidationImportOpen(true)}
           />
         );
       case ViewState.RESEARCHER_DETAIL:
@@ -333,6 +366,13 @@ function App() {
           applying={false}
           onApply={handleApplyIdref}
           onClose={() => setIdrefDiff(null)}
+        />
+      )}
+      {validationImportOpen && (
+        <ValidationImportReview
+          researchers={researchers}
+          onApply={handleApplyValidation}
+          onClose={() => setValidationImportOpen(false)}
         />
       )}
     </MainLayout>

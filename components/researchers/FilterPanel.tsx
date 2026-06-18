@@ -9,6 +9,8 @@ interface FilterPanelProps {
   onSearchChange: (val: string) => void;
   filterStatuses: string[];
   onStatusChange: (vals: string[]) => void;
+  filterValidation: string[];
+  onValidationChange: (vals: string[]) => void;
   filterEmployers: string[];
   onEmployerChange: (vals: string[]) => void;
   filterLabs: string[];
@@ -37,6 +39,7 @@ interface FilterPanelProps {
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   searchTerm, onSearchChange,
   filterStatuses, onStatusChange,
+  filterValidation, onValidationChange,
   filterEmployers, onEmployerChange,
   filterLabs, onLabChange,
   filterGrades, onGradeChange,
@@ -87,6 +90,16 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         ]}
         selected={filterStatuses}
         onChange={onStatusChange}
+      />
+      <MultiSelectFilter
+        label="VALIDATION"
+        options={[
+          { value: 'validated', label: 'VALIDÉ' },
+          { value: 'stale', label: 'VALIDÉ PÉRIMÉ' },
+          { value: 'not_validated', label: 'NON VALIDÉ' },
+        ]}
+        selected={filterValidation}
+        onChange={onValidationChange}
       />
       <MultiSelectFilter
         label="EMPLOYEUR"

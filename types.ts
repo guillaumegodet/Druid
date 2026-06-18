@@ -4,6 +4,10 @@
  * Regroupe les référentiels chercheurs, structures et gestion administrative.
  */
 
+// Couche de fiabilisation (statut/rattachement validés manuellement).
+// Type-only import → effacé à la compilation, pas de cycle d'exécution.
+import type { ValidationInfo } from './lib/validation';
+
 /** États de vue pour la navigation principale */
 export enum ViewState {
   RESEARCHERS_LIST = 'RESEARCHERS_LIST',
@@ -93,6 +97,7 @@ export interface Researcher {
   extra?: ResearcherExtra;    // Champs spécifiques Nantes Université
   ldapFields?: string[];   // Champs racine dont la valeur provient du LDAP (non modifiables)
   lastSync?: string;       // Date de dernière mise à jour via source externe
+  validation?: ValidationInfo; // Couche de fiabilisation manuelle (prime sur le statut dérivé)
 }
 
 /** Groupe fonctionnel transverse */

@@ -31,6 +31,8 @@ interface ResearcherListProps {
   onAlignIdref?: (mode: 'search' | 'verify') => void;
   /** Alignement IdRef en cours */
   idrefBusy?: boolean;
+  /** Ouvre l'atelier d'import d'une liste fiabilisée (validation manuelle) */
+  onImportValidation?: () => void;
 }
 
 /**
@@ -42,6 +44,7 @@ interface ResearcherListProps {
 export const ResearcherList: React.FC<ResearcherListProps> = ({
   researchers, setResearchers, onSelectResearcher, onNewResearcher,
   loading = false, onManualSync, onSyncToSovisu, onAlignIdref, idrefBusy = false,
+  onImportValidation,
 }) => {
   const filters = useResearcherFilters(researchers);
 
@@ -118,6 +121,7 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({
         sortedResearchers={filters.sortedResearchers}
         onAlignIdref={onAlignIdref}
         idrefBusy={idrefBusy}
+        onImportValidation={onImportValidation}
       />
 
       <div className="p-8 flex-1 overflow-auto">
@@ -151,6 +155,8 @@ export const ResearcherList: React.FC<ResearcherListProps> = ({
             onSearchChange={filters.updateSearch}
             filterStatuses={filters.filterStatuses}
             onStatusChange={filters.updateStatuses}
+            filterValidation={filters.filterValidation}
+            onValidationChange={filters.updateValidation}
             filterEmployers={filters.filterEmployers}
             onEmployerChange={filters.updateEmployers}
             filterLabs={filters.filterLabs}
